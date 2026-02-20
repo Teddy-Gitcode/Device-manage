@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # 1. Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: devicemonitor
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: corporate_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # 2. Message Broker
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # 3. Python Backend
+  backend:
+    build: ./Backend   # Matches your exact folder name
+    volumes:
+      - ./Backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://admin:corporate_password@db:5432/devicemonitor
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  # 4. React Frontend
+  frontend:
+    build: ./Frontend   # Matches your exact folder name
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules # Prevents local node_modules from overriding the container's
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  # 5. Background Task Poller
+  celery_worker:
+    build: ./Backend
+    command: celery -A core worker -l info --concurrency=4
+    volumes:
+      - ./Backend:/app
+    environment:
+      - DATABASE_URL=postgres://admin:corporate_password@db:5432/devicemonitor
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    depends_on:
+      - backend
+      - redis
+
+volumes:
+  postgres_data:
