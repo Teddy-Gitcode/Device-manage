@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ printer.name|default:printer.ip_address }} — Device Monitor{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+      .simulated-screen {
+        background: #0d1f0d;
+        color: #00ff41;
+        font-family: "Consolas", "Monaco", "Courier New", monospace;
+        font-size: 0.95rem;
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        border: 1px solid #00aa2a;
+        min-height: 4rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .simulated-screen.empty { color: #006622; }
+      .alert-box-red {
+        background: #f8d7da;
+        border: 1px solid #f5c2c7;
+        color: #842029;
+        border-radius: 8px;
+        padding: 1rem;
+      }
+      .vitals-card { height: 100%; }
+      .timeline-item {
+        border-left: 3px solid #dee2e6;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+      }
+      .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -6px;
+        top: 0;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #6c757d;
+      }
+      .timeline-item.timeline-critical::before { background: #dc3545; }
+      .timeline-item.timeline-warning::before { background: #ffc107; }
+      .timeline-item.timeline-success::before { background: #198754; }
+    </style>
+{% endblock %}
+
+{% block content %}
+      <a href="{% url 'dashboard' %}" class="back-link">← Back to Dashboard</a>
+
+      <!-- Hero Section -->
+      <section class="mb-4">
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <h1 class="mb-0">{{ printer.name|default:printer.ip_address }}</h1>
+            {% if printer.model_name %}
+              <span class="text-muted fs-5">{{ printer.model_name }}</span>
+            {% endif %}
+            {% if last_log %}
+              <span class="badge bg-{{ status_color }} fs-6">{{ last_log.status }}</span>
+            {% else %}
+              <span class="badge bg-secondary fs-6">Unknown</span>
+            {% endif %}
+          </div>
+          <div class="ms-auto d-flex flex-wrap gap-2">
+            <a href="http://{{ printer.ip_address }}/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+              Open Printer Portal
+            </a>
+          </div>
+        </div>
+        <div class="row align-items-stretch">
+          <div class="col-lg-6 mb-3 mb-lg-0">
+            <p class="text-muted small mb-2">Simulated Screen</p>
+            <div class="simulated-screen {% if not console_display %}empty{% endif %}">
+              {% if console_display %}{{ console_display }}{% else %}(no display data){% endif %}
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <p class="text-muted small mb-2">Device info</p>
+            <div class="bg-light rounded p-3 h-100">
+              <div class="row g-2 small">
+                <div class="col-6"><strong>IP</strong> {{ printer.ip_address }}</div>
+                <div class="col-6"><strong>MAC</strong> {{ printer.mac_address|default:"—" }}</div>
+                <div class="col-6"><strong>Serial</strong> {{ printer.serial_number|default:"—" }}</div>
+                <div class="col-6"><strong>Location</strong> {{ printer.location|default:"—" }}</div>
+                {% if last_log %}
+                  <div class="col-6"><strong>Total pages</strong> {{ last_log.total_pages|default:"—" }}</div>
+                  <div class="col-6"><strong>Uptime</strong> {{ system_uptime_display|default:"—" }}</div>
+                  <div class="col-12"><strong>Last checked</strong> {{ last_log.timestamp|timesince }} ago</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Vitals & Analytics Tabs -->
+      <section class="mb-4">
+        <ul class="nav nav-tabs mb-3" id="vitalsTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="vitals-tab" data-bs-toggle="tab" data-bs-target="#vitals-content" type="button" role="tab">
+              <i class="fas fa-heartbeat me-2"></i>Vitals
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics-content" type="button" role="tab">
+              <i class="fas fa-chart-bar me-2"></i>Analytics & Cost
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content" id="vitalsTabContent">
+          <div class="tab-pane fade show active" id="vitals-content" role="tabpanel">
+            <div class="row g-3">
+          <!-- Supply Column: Toners -->
+          <div class="col-md-4">
+            <div class="card vitals-card">
+              <div class="card-header bg-transparent border-bottom">
+                <i class="fas fa-fill-drip me-2"></i>Supplies
+              </div>
+              <div class="card-body">
+                {% for s in toners %}
+                  <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                      <span>{{ s.name }}</span>
+                      <span>{{ s.level_percent }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar {% if s.level_percent < 10 %}bg-danger{% elif s.level_percent < 25 %}bg-warning{% else %}bg-success{% endif %}"
+                           role="progressbar" style="width: {{ s.level_percent }}%;" aria-valuenow="{{ s.level_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                  </div>
+                {% empty %}
+                  <p class="text-muted small mb-0">No toner data yet.</p>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <!-- Trays Column (Paper sources: source, size, capacity, current, status) -->
+          <div class="col-md-4">
+            <div class="card vitals-card">
+              <div class="card-header bg-transparent border-bottom">
+                <i class="fas fa-layer-group me-2"></i>Paper
+              </div>
+              <div class="card-body">
+                {% for tray in tray_status_display %}
+                  <div class="d-flex align-items-center justify-content-between py-2 border-bottom border-light">
+                    <div class="small">
+                      <span class="fw-medium">{{ tray.source }}</span>
+                      {% if tray.size %}<span class="text-muted"> — {{ tray.size }}</span>{% endif %}
+                      {% if tray.capacity is not None %}<br><span class="text-muted small">Cap: {{ tray.capacity }}{% if tray.current is not None %} · Current: {{ tray.current }}{% endif %}</span>{% endif %}
+                    </div>
+                    {% if tray.status == "Paper Loaded" %}
+                      <span class="text-success" title="{{ tray.status }}">✅</span>
+                    {% else %}
+                      <span class="text-danger" title="{{ tray.status }}">❌</span>
+                    {% endif %}
+                  </div>
+                {% empty %}
+                  <p class="text-muted small mb-0">No tray data yet.</p>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <!-- Alerts Column -->
+          <div class="col-md-4">
+            <div class="card vitals-card">
+              <div class="card-header bg-transparent border-bottom">
+                <i class="fas fa-bell me-2"></i>Alerts
+              </div>
+              <div class="card-body">
+                {% if active_alerts %}
+                  <div class="alert-box-red">
+                    <ul class="mb-0 ps-3 small">
+                      {% for msg in active_alerts %}
+                        <li>{{ msg }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% else %}
+                  <p class="text-success mb-0 small"><i class="fas fa-circle-check me-1"></i> System Healthy</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- History Section: Pages Printed (30 days) -->
+      <section class="mb-4">
+        <h5 class="mb-3">History — Pages Printed (Last 30 Days)</h5>
+        <div class="card">
+          <div class="card-body">
+            <div class="chart-container" style="position: relative; height: 280px;">
+              <canvas id="pagesChart"></canvas>
+            </div>
+            {% if not history_has_data %}
+              <p class="text-muted small mb-0 mt-2">Run scans over time to see page volume.</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+  const ctx = document.getElementById('pagesChart');
+  if (!ctx) return;
+  const labels = {{ history_labels|safe }};
+  const pages = {{ history_pages|safe }};
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Pages Printed',
+        data: pages,
+        backgroundColor: 'rgba(0, 135, 81, 0.6)',
+        borderColor: '#008751',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Pages' }
+        },
+        x: {
+          title: { display: true, text: 'Date' }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

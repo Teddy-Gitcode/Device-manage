@@ -1,0 +1,27 @@
+{% if alerts %}
+  {% for alert in alerts %}
+    <div class="notification-item dropdown-item d-flex align-items-start gap-2 py-2 border-bottom {% if alert.severity == 'critical' %}bg-danger bg-opacity-10{% elif alert.severity == 'warning' %}bg-warning bg-opacity-10{% elif alert.severity == 'resolved' %}bg-success bg-opacity-10{% endif %}">
+      <div class="flex-shrink-0 mt-1">
+        {% if alert.severity == 'critical' %}
+          <i class="fas fa-circle-xmark text-danger"></i>
+        {% elif alert.severity == 'warning' %}
+          <i class="fas fa-triangle-exclamation text-warning"></i>
+        {% elif alert.severity == 'resolved' %}
+          <i class="fas fa-circle-check text-success"></i>
+        {% else %}
+          <i class="fas fa-info-circle text-info"></i>
+        {% endif %}
+      </div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold small">{{ alert.printer_name }}</div>
+        <div class="small text-muted">{{ alert.message }}</div>
+        <div class="small text-muted">{{ alert.timestamp }}</div>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="text-center py-3 text-muted">
+    <i class="fas fa-check-circle text-success mb-2 fs-4"></i>
+    <div>No alerts</div>
+  </div>
+{% endif %}

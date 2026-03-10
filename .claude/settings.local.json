@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/lonew/Documents/enterprise/Device-manage/Flowbite/src -type f \\\\\\( -name \"*.astro\" -o -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.json\" \\\\\\) 2>/dev/null | sort)",
+      "Bash(ls -la \"C:\\\\Users\\\\lonew\\\\Documents\\\\enterprise\\\\Device-manage\\\\Flowbite\\\\src\\\\pages\\\\printers\\\\\" 2>/dev/null && echo \"---\" && ls -la \"C:\\\\Users\\\\lonew\\\\Documents\\\\enterprise\\\\Device-manage\\\\Flowbite\\\\src\\\\pages\\\\\" 2>/dev/null)",
+      "Bash(dir \"C:\\\\Users\\\\lonew\\\\Documents\\\\enterprise\\\\Device-manage\\\\Flowbite\\\\src\" /s /b /a-d 2>/dev/null | findstr \"\\\\.ts$\")",
+      "Bash(python3 -c \"import sys,json; lines=[json.loads\\(l\\) for l in sys.stdin if l.strip\\(\\)]; [print\\(m.get\\(''''role'''',''''?''''\\),'''':'''',str\\(m.get\\(''''content'''',''''''''\\)\\)[:200]\\) for entry in lines[-20:] for m in \\([entry] if ''''role'''' in entry else []\\)]\")",
+      "Bash(ls \"/c/Users/lonew/.claude/projects/C--Users-lonew-Documents-enterprise-Device-manage/\" && wc -l \"/c/Users/lonew/.claude/projects/C--Users-lonew-Documents-enterprise-Device-manage/\"*.jsonl 2>/dev/null)",
+      "Bash(which python3.11 || which python3.12 || which python || py --version 2>/dev/null; ls /c/Users/lonew/Documents/enterprise/Device-manage/Backend/devices/)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(netstat -ano 2>/dev/null | grep -E \":\\(2121|3000|4321\\)\" | grep LISTENING || ss -tlnp 2>/dev/null | grep -E \":\\(2121|3000|4321\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X OPTIONS http://localhost:8000/api/auth/login/ \\\\\n  -H \"Origin: http://localhost:2121\" \\\\\n  -H \"Access-Control-Request-Method: POST\" \\\\\n  -H \"Access-Control-Request-Headers: Content-Type\" \\\\\n  -v 2>&1 | grep -E \"\\(HTTP|access-control|cors|origin|< \\)\" | head -20)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login/ \\\\\n  -H \"Origin: http://localhost:2121\" \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -d '{\"username\":\"admin\",\"password\":\"admin123\"}' \\\\\n  -w \"\\\\nHTTP: %{http_code}\")",
+      "Bash(cd /c/Users/lonew/Documents/enterprise/Device-manage/Flowbite && npm run build 2>&1 | tail -30)",
+      "Bash(docker-compose restart:*)",
+      "Bash(sleep 3 && curl -s -X GET http://localhost:8000/api/auth/me/ \\\\\n  -H \"Authorization: Token f5c7f55b832e7f3d6ab93645b8cbbd6bf8908b45\" | python -m json.tool 2>/dev/null || curl -s http://localhost:8000/api/auth/me/ -H \"Authorization: Token f5c7f55b832e7f3d6ab93645b8cbbd6bf8908b45\")",
+      "Bash(sleep 3 && curl -s http://localhost:8000/api/auth/me/ -H \"Authorization: Token f5c7f55b832e7f3d6ab93645b8cbbd6bf8908b45\")",
+      "Bash(cd \"C:\\\\Users\\\\lonew\\\\Documents\\\\enterprise\\\\Device-manage\\\\Flowbite\" && npm run build 2>&1 | tail -40)",
+      "Bash(cd \"C:\\\\Users\\\\lonew\\\\Documents\\\\enterprise\\\\Device-manage\\\\Flowbite\" && npm run build 2>&1 | tail -20)"
+    ]
+  }
+}

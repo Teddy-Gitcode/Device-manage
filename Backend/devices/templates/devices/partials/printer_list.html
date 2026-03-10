@@ -1,0 +1,80 @@
+{% for item in printer_data %}
+<div class="col-md-6 col-lg-4 mb-4 card-printer-wrap" data-status="{{ item.status }}" data-location="{{ item.printer.location|default:'' }}" data-model="{{ item.printer.model_name|default:'' }}" data-name="{{ item.printer.name|default:'' }}">
+  <div class="card h-100 card-printer noc-card" data-printer-card data-printer-id="{{ item.printer.id }}" data-printer-name="{{ item.printer.name }}" data-toner-depletion="{% if item.toner_depletion_days is not None %}{{ item.toner_depletion_days }}{% endif %}" data-maintenance-date="{% if item.maintenance_date %}{{ item.maintenance_date|date:'Y-m-d' }}{% endif %}">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+        <div class="d-flex align-items-center gap-2">
+          {% if item.status_tier == 'operational' %}
+          <i class="fas fa-circle-check text-success noc-status-icon"></i>
+          {% elif item.status_tier == 'warning' %}
+          <i class="fas fa-triangle-exclamation text-warning noc-status-icon"></i>
+          {% elif item.status_tier == 'critical' %}
+          <i class="fas fa-circle-xmark text-danger noc-status-icon"></i>
+          {% elif item.status_tier == 'maintenance' %}
+          <i class="fas fa-wrench text-primary noc-status-icon"></i>
+          {% else %}
+          <i class="fas fa-question-circle text-secondary noc-status-icon"></i>
+          {% endif %}
+          <h5 class="card-title mb-0">{{ item.printer.name }}</h5>
+        </div>
+        <span class="badge status-badge bg-{{ item.color }} flex-shrink-0">{{ item.status }}</span>
+      </div>
+      <p class="printer-ip small mb-1">{{ item.printer.ip_address }}{% if item.printer.model_name %} · {{ item.printer.model_name|truncatewords:4 }}{% endif %}{% if item.printer.location %} · {{ item.printer.location }}{% endif %}</p>
+      <p class="small mb-2">
+        <a href="http://{{ item.printer.ip_address }}/" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="text-decoration-none">
+          Visit printer portal →
+        </a>
+      </p>
+
+      <div class="noc-metric-row row g-2 mb-2">
+        <div class="col-4">
+          <div class="noc-metric-mini">
+            <span class="noc-metric-val">{% if item.system_uptime_display %}{{ item.system_uptime_display }}{% else %}—{% endif %}</span>
+            <span class="noc-metric-lbl">Uptime</span>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="noc-metric-mini">
+            <span class="noc-metric-val">{{ item.daily_jams }}</span>
+            <span class="noc-metric-lbl">Jams Today</span>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="noc-metric-mini">
+            <span class="noc-metric-val">{% if item.est_cost_today is not None %}{{ item.est_cost_today }}{% else %}—{% endif %}</span>
+            <span class="noc-metric-lbl">Cost Today</span>
+          </div>
+        </div>
+      </div>
+
+      {% if item.primary_toner %}
+      <div class="toner-main-label mt-2">
+        <span>{{ item.primary_toner.name }}</span>
+        <span>{{ item.primary_toner.level_percent }}%</span>
+      </div>
+      <div class="toner-main-bar">
+        <div class="toner-fill {% if item.primary_toner.level_percent < 10 %}toner-critical{% elif item.primary_toner.level_percent < 25 %}toner-low{% else %}toner-ok{% endif %}" style="width: {{ item.primary_toner.level_percent }}%;"></div>
+      </div>
+      {% else %}
+      <div class="toner-main-label mt-2">
+        <span>Toner</span>
+        <span class="text-muted">No data</span>
+      </div>
+      <div class="toner-main-bar">
+        <div class="toner-fill toner-ok" style="width: 0%;"></div>
+      </div>
+      {% endif %}
+
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <a href="{% url 'printer_detail' item.printer.id %}" class="btn-view-details btn btn-sm" onclick="event.stopPropagation();">View Details →</a>
+        <span class="text-muted small">{% if item.last_checked != 'Never' %}{{ item.last_checked|timesince }} ago{% else %}Never{% endif %}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% empty %}
+<div class="col-12 text-center py-5">
+  <p class="fs-5 text-muted mb-2">No printers found.</p>
+  <p class="text-muted">Add printers in the Admin panel and run a scan.</p>
+</div>
+{% endfor %}
