@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Side nav</title><link rel="stylesheet" href="card.css"></head>
+<body style="padding:0; background:#faf9f8;">
+<style>
+.nav { width:240px; background:#fafafa; border-right:1px solid #e0e0e0; padding:12px 0; font-family: var(--font-sans); }
+.item { display:flex; align-items:center; gap:10px; height:34px; padding:0 16px; font-size:13px; color:#242424; font-weight:500; cursor:pointer; }
+.item:hover { background:#f5f5f5; }
+.item.active { background:#ebf3fc; color:#0f6cbd; border-left:2px solid #0f6cbd; padding-left:14px; }
+.item .count { margin-left:auto; font-size:11px; color:#a4262c; background:#fde7e9; padding:1px 6px; border-radius:999px; }
+.div { height:1px; background:#f0f0f0; margin:8px 16px; }
+.section { padding:6px 16px 4px; font-size:10px; color:#616161; text-transform:uppercase; letter-spacing:.04em; font-weight:500; }
+</style>
+<div style="display:flex; gap:0;">
+<div class="nav">
+  <div class="section">Monitor</div>
+  <div class="item active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</div>
+  <div class="item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/></svg>Devices</div>
+  <div class="item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M16.5 9.4 7.5 4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Consumables</div>
+  <div class="item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>Analytics</div>
+  <div class="item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Alerts<span class="count">5</span></div>
+  <div class="div"></div>
+  <div class="section">Operate</div>
+  <div class="item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r=".5"/><circle cx="4" cy="12" r=".5"/><circle cx="4" cy="18" r=".5"/></svg>Print jobs</div>
+  <div class="item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>Reallocation</div>
+  <div class="item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Reports</div>
+</div>
+</div>
+</body></html>

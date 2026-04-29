@@ -1,0 +1,52 @@
+// All icons sourced from lucide-react (https://lucide.dev) — MIT license
+// Named exports keep the existing IconXxx convention so all imports stay unchanged.
+export {
+  // ── Navigation / Layout ──────────────────────────────────────────────────
+  LayoutDashboard  as IconDashboard,
+  LayoutGrid       as IconGrid,
+  Printer          as IconPrinter,
+  Package          as IconPackage,
+  BarChart2        as IconBarChart,
+  AlertTriangle    as IconAlert,
+  List             as IconList,
+  ArrowLeftRight   as IconReallocate,
+  FileText         as IconFile,
+  Users            as IconUsers,
+  Settings         as IconSettings,
+  // ── Header ───────────────────────────────────────────────────────────────
+  Grid3X3          as IconWaffle,
+  Search           as IconSearch,
+  Bell             as IconBell,
+  Activity         as IconActivity,
+  // ── Actions ──────────────────────────────────────────────────────────────
+  X                as IconX,
+  ChevronRight     as IconChevronRight,
+  ChevronDown      as IconChevronDown,
+  RefreshCw        as IconRefresh,
+  MoreHorizontal   as IconMore,
+  Check            as IconCheck,
+  Download         as IconDownload,
+  Plus             as IconPlus,
+  Filter           as IconFilter,
+  // ── Status / Alerts ───────────────────────────────────────────────────────
+  CheckCircle2     as IconCheckCircle,
+  AlertCircle      as IconAlertCircle,
+  Info             as IconInfo,
+  // ── Device / Tech ─────────────────────────────────────────────────────────
+  Cpu              as IconCpu,
+  Wifi             as IconWifi,
+  WifiOff          as IconWifiOff,
+  Database         as IconDatabase,
+  Zap              as IconZap,
+  // ── Domain ────────────────────────────────────────────────────────────────
+  Droplet          as IconDroplet,
+  Clock            as IconClock,
+  Wrench           as IconWrench,
+  ShieldCheck      as IconShield,
+  Mail             as IconMail,
+  TrendingUp       as IconTrendingUp,
+  User             as IconUser,
+  ArrowRight       as IconArrowRight,
+  PauseCircle      as IconPauseCircle,
+  Menu             as IconMenu,
+} from 'lucide-react'

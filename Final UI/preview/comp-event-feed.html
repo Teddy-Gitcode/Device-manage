@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Event feed</title><link rel="stylesheet" href="card.css"></head>
+<body>
+<style>
+.event { display:flex; gap:10px; padding:10px 4px; border-bottom:1px solid #f0f0f0; align-items:flex-start; }
+.event:last-child { border-bottom:none; }
+.ei { width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:12px; font-weight:600; border:1px solid; }
+.ei.d { background:#fde7e9; color:#a4262c; border-color:#f1bbbc;}
+.ei.w { background:#fff4ce; color:#835c00; border-color:#fdcfb4;}
+.ei.o { background:#dff6dd; color:#107c10; border-color:#9fd89f;}
+.msg { font-size:13px; color:#242424; font-weight:500;}
+.src { font-size:11px; color:#616161; margin-top:2px;}
+</style>
+<div class="card" style="padding:14px 16px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><div style="font-size:14px; font-weight:600;">Live events</div><div style="display:flex; align-items:center; gap:6px; font-size:11px; color:#616161;"><span style="width:6px; height:6px; border-radius:999px; background:#107c10;"></span>Connected</div></div>
+  <div class="event"><div class="ei d">!</div><div><div class="msg">Paper jam detected</div><div class="src">PR-004 · Mombasa Export · 2m ago</div></div></div>
+  <div class="event"><div class="ei d">!</div><div><div class="msg">Cover open</div><div class="src">PR-017 · HQ Finance · 4m ago</div></div></div>
+  <div class="event"><div class="ei w">!</div><div><div class="msg">Toner low (12%)</div><div class="src">PR-009 · HQ Marketing · 11m ago</div></div></div>
+  <div class="event"><div class="ei o">✓</div><div><div class="msg">Device back online</div><div class="src">PR-021 · Kericho Plant · 14m ago</div></div></div>
+</div>
+</body></html>

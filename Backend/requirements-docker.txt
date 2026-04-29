@@ -32,3 +32,6 @@ whitenoise>=6.5,<7
 # Optional: keep if your code uses them
 requests>=2.31,<3
 python-dotenv>=1.0,<2
+
+# Email alerts (Mailtrap via anymail)
+django-anymail>=10,<13

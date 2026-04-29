@@ -1,0 +1,51 @@
+@import url("../colors_and_type.css");
+
+html, body {
+  margin: 0;
+  padding: 20px;
+  background: #faf9f8;
+  font-family: var(--font-sans);
+  color: var(--neutral-fg-1);
+}
+
+.card {
+  background: var(--neutral-bg-1);
+  border: 1px solid var(--neutral-stroke-2);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  box-shadow: var(--shadow-2);
+}
+
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.grid { display: grid; gap: 12px; }
+
+.swatch {
+  width: 100%;
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--neutral-stroke-2);
+}
+
+.swatch-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--neutral-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch-col .name {
+  color: var(--neutral-fg-1);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--neutral-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}

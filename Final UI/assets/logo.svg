@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="32" viewBox="0 0 160 32" fill="none">
+  
+  <g transform="translate(0,4)">
+    
+    <rect x="0" y="0" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="7" y="0" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="14" y="0" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="0" y="7" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="7" y="7" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="14" y="7" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="0" y="14" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="7" y="14" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+    <rect x="14" y="14" width="5" height="5" rx="0.5" fill="#0f6cbd"></rect>
+  </g>
+  
+  <g transform="translate(28,6)" stroke="#0f6cbd" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7 V3 H13 V7"></path>
+    <rect x="1" y="7" width="14" height="8" rx="1.2" fill="#ebf3fc"></rect>
+    <rect x="4" y="12" width="8" height="5" rx="0.6" fill="#fff"></rect>
+    <circle cx="12.5" cy="10.5" r="0.8" fill="#0f6cbd" stroke="none"></circle>
+  </g>
+  
+  <text x="52" y="18" font-family="Segoe UI, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#242424" letter-spacing="-0.2">Print Fleet</text>
+</svg>

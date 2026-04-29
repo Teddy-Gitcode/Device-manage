@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Device row</title><link rel="stylesheet" href="card.css"></head>
+<body>
+<style>
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th { text-align:left; font-weight:500; font-size:11px; color:#616161; text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; background:#fafafa; border-bottom:1px solid #e0e0e0; }
+td { padding:10px; border-bottom:1px solid #f0f0f0; vertical-align:middle; color:#242424; }
+.badge { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:500; border:1px solid; }
+.danger { background:#fde7e9; color:#a4262c; border-color:#f1bbbc; }
+.ok { background:#dff6dd; color:#107c10; border-color:#9fd89f; }
+.warn { background:#fff4ce; color:#835c00; border-color:#fdcfb4; }
+.bars { display:flex; gap:3px; }
+.bar { width:4px; height:20px; background:#f0f0f0; border-radius:1px; position:relative; overflow:hidden; }
+.bar::after { content:''; position:absolute; left:0; right:0; bottom:0; background:var(--c); height:var(--h); }
+.util { height:6px; width:120px; background:#f0f0f0; border-radius:3px; overflow:hidden; }
+.util > div { height:100%; border-radius:3px; }
+.chip { display:inline-flex; padding:1px 8px; border-radius:4px; font-size:11px; font-weight:500; border:1px solid; }
+.relocate { background:#ebf3fc; color:#0f6cbd; border-color:#9ec7ee; }
+.keep { background:#f5f5f5; color:#424242; border-color:#e0e0e0; }
+.service { background:#fde7e9; color:#a4262c; border-color:#f1bbbc; }
+</style>
+<div class="card" style="padding:0; overflow:hidden;">
+<table>
+  <thead><tr><th>Device</th><th>Status</th><th>Toner</th><th>Util</th><th>Pages 30d</th><th>Rec.</th></tr></thead>
+  <tbody>
+    <tr><td><div style="font-weight:500;">HP LaserJet M506</div><div style="color:#616161; font-size:11px;">PR-004 · Mombasa Export</div></td><td><span class="badge danger">Needs service</span></td><td><div class="bars"><span class="bar" style="--c:#242424; --h:84%;"></span><span class="bar" style="--c:#009dd8; --h:42%;"></span><span class="bar" style="--c:#d83b9d; --h:67%;"></span><span class="bar" style="--c:#a4262c; --h:15%;"></span></div></td><td><div class="util"><div style="width:94%; background:#a4262c;"></div></div><div style="font-size:11px; color:#616161; margin-top:2px;">94%</div></td><td>41,820</td><td><span class="chip service">Service</span></td></tr>
+    <tr><td><div style="font-weight:500;">Canon iR-ADV C5535</div><div style="color:#616161; font-size:11px;">PR-017 · HQ Finance</div></td><td><span class="badge ok">Online</span></td><td><div class="bars"><span class="bar" style="--c:#242424; --h:58%;"></span><span class="bar" style="--c:#009dd8; --h:72%;"></span><span class="bar" style="--c:#d83b9d; --h:66%;"></span><span class="bar" style="--c:#f2c811; --h:51%;"></span></div></td><td><div class="util"><div style="width:72%; background:#0f6cbd;"></div></div><div style="font-size:11px; color:#616161; margin-top:2px;">72%</div></td><td>28,540</td><td><span class="chip keep">Keep</span></td></tr>
+    <tr><td><div style="font-weight:500;">Xerox VersaLink B405</div><div style="color:#616161; font-size:11px;">PR-009 · Kericho Plant</div></td><td><span class="badge warn">Warning</span></td><td><div class="bars"><span class="bar" style="--c:#242424; --h:12%;"></span></div></td><td><div class="util"><div style="width:14%; background:#bdbdbd;"></div></div><div style="font-size:11px; color:#616161; margin-top:2px;">14%</div></td><td>3,210</td><td><span class="chip relocate">Relocate</span></td></tr>
+  </tbody>
+</table>
+</div>
+</body></html>

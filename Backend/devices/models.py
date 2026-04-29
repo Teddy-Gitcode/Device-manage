@@ -32,6 +32,7 @@ class Printer(models.Model):
 
     # Real-time status (SNMP-polled)
     class CurrentStatus(models.IntegerChoices):
+        SLEEPING = 2, "Sleeping"
         IDLE = 3, "Idle"
         PRINTING = 4, "Printing"
         WARMING_UP = 5, "Warming Up"
@@ -91,6 +92,7 @@ class Printer(models.Model):
         blank=True,
         help_text="Lowest supply/toner level from last poll (for SRE saturation)",
     )
+    last_known_jam_total = models.IntegerField(null=True, blank=True, help_text="Cumulative jam count last seen (used to compute daily deltas)")
 
     # Alerting state (SRE actionable alerting with cool-off)
     is_in_alert_state = models.BooleanField(default=False)

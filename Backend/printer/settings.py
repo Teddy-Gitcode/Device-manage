@@ -21,10 +21,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-c+2t&3eti5_!s0!(u5e5f_j=d7#$#%1rg#yg8831e@wxr&n9eb'
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-dev-only-change-me-in-production'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'true').lower() not in ('false', '0', 'no')
 
 # In Docker (DATABASE_URL set), allow any host for API/WebSocket from browser
 ALLOWED_HOSTS = ['*'] if os.environ.get('DATABASE_URL') else ['127.0.0.1', 'localhost']
@@ -176,6 +179,27 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# ============================================================
+# Email Alerts (Mailtrap via django-anymail)
+# ============================================================
+INSTALLED_APPS += ['anymail']
+
+ANYMAIL = {
+    "MAILTRAP_API_TOKEN": os.environ.get("MAILTRAP_API_TOKEN", ""),
+}
+EMAIL_BACKEND = "anymail.backends.mailtrap.EmailBackend"
+DEFAULT_FROM_EMAIL = os.environ.get("ALERT_FROM_EMAIL", "hello@demomailtrap.co")
+
+# Comma-separated list of emails to receive alerts, e.g. "noc@company.com,admin@company.com"
+ALERT_EMAIL_RECIPIENTS = [
+    e.strip()
+    for e in os.environ.get("ALERT_EMAIL_RECIPIENTS", "").split(",")
+    if e.strip()
+]
+
+# Toner level threshold (%) below which a low-toner alert is sent
+ALERT_LOW_TONER_THRESHOLD = int(os.environ.get("ALERT_LOW_TONER_THRESHOLD", "10"))
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',

@@ -3,13 +3,18 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: devicemonitor
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: corporate_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # 2. Message Broker
   redis:
@@ -17,22 +22,33 @@ services:
     ports:
       - "6379:6379"
 
-  # 3. Python Backend
+  # 3. Python Backend (also serves the built SPA bundle from ../frontend/dist)
   backend:
-    build: ./Backend   # Matches your exact folder name
+    build: ./Backend
     volumes:
       - ./Backend:/app
+      - ./frontend/dist:/frontend/dist:ro
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgres://admin:corporate_password@db:5432/devicemonitor
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - SUBNET_PREFIX=192.168
-      - DJANGO_SETTINGS_MODULE=printer.settings
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - SUBNET_PREFIX=${SUBNET_PREFIX}
+      - SNMP_COMMUNITY=${SNMP_COMMUNITY}
+      - SNMP_TIMEOUT=${SNMP_TIMEOUT}
+      - SNMP_RETRIES=${SNMP_RETRIES}
+      - SUPPLY_POLL_INTERVAL_SECONDS=${SUPPLY_POLL_INTERVAL_SECONDS}
+      - LOG_MIN_INTERVAL_SECONDS=${LOG_MIN_INTERVAL_SECONDS}
+      - POLL_CONCURRENT_LIMIT=${POLL_CONCURRENT_LIMIT}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   # 4. Background Task Poller
   celery_worker:
@@ -43,11 +59,20 @@ services:
       - ./Backend:/app
     network_mode: "host"
     environment:
-      - DATABASE_URL=postgres://admin:corporate_password@localhost:5432/devicemonitor
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
       - REDIS_URL=redis://localhost:6379/0
       - CELERY_BROKER_URL=redis://localhost:6379/1
-      - SUBNET_PREFIX=192.168
-      - DJANGO_SETTINGS_MODULE=printer.settings
+      - SUBNET_PREFIX=${SUBNET_PREFIX}
+      - SNMP_COMMUNITY=${SNMP_COMMUNITY}
+      - SNMP_TIMEOUT=${SNMP_TIMEOUT}
+      - SNMP_RETRIES=${SNMP_RETRIES}
+      - SUPPLY_POLL_INTERVAL_SECONDS=${SUPPLY_POLL_INTERVAL_SECONDS}
+      - LOG_MIN_INTERVAL_SECONDS=${LOG_MIN_INTERVAL_SECONDS}
+      - POLL_CONCURRENT_LIMIT=${POLL_CONCURRENT_LIMIT}
+      - DISCOVERY_CONCURRENT_LIMIT=${DISCOVERY_CONCURRENT_LIMIT}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
 
   # 5. Celery Beat (scheduler for discovery & polling)
   celery_beat:
@@ -57,11 +82,13 @@ services:
     volumes:
       - ./Backend:/app
     environment:
-      - DATABASE_URL=postgres://admin:corporate_password@db:5432/devicemonitor
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - SUBNET_PREFIX=192.168
-      - DJANGO_SETTINGS_MODULE=printer.settings
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - SUBNET_PREFIX=${SUBNET_PREFIX}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
     depends_on:
       - backend
       - redis

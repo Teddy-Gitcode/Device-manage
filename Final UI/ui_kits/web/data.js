@@ -1,0 +1,63 @@
+// Fake data for the click-through UI kit.
+window.FleetData = {
+  devices: [
+    { id: "PR-004", name: "HP LaserJet M506", location: "Mombasa · Export", status: "danger", toner: [84,0,0,0], mono: true, paper: 62, pages30d: 41820, utilization: 94, recommendation: "service",
+      ip: "10.4.21.14", mac: "A4:5D:36:11:02:8F", serial: "CNBXK04821", firmware: "2303A", uptime: "34 days", lastService: "2026-02-14", jams30d: 11, costPerPage: "KES 2.40", monthlyDuty: "150,000 pp/mo", lifetimePages: 842340, jobs30d: 1420, avgJobSize: 29.5, duplexRate: 62 },
+    { id: "PR-017", name: "Canon iR-ADV C5535", location: "HQ · Floor 3 · Finance", status: "ok", toner: [58,72,66,51], mono: false, paper: 88, pages30d: 28540, utilization: 72, recommendation: "keep",
+      ip: "10.4.31.09", mac: "1C:39:47:A2:55:3B", serial: "NNL12043", firmware: "18.12", uptime: "112 days", lastService: "2026-03-01", jams30d: 2, costPerPage: "KES 3.80", monthlyDuty: "40,000 pp/mo", lifetimePages: 412300, jobs30d: 980, avgJobSize: 29.1, duplexRate: 74 },
+    { id: "PR-009", name: "Xerox VersaLink B405", location: "Kericho · Plant Admin", status: "warn", toner: [12,0,0,0], mono: true, paper: 30, pages30d: 3210, utilization: 14, recommendation: "relocate",
+      ip: "10.6.10.44", mac: "D4:81:CE:00:14:12", serial: "XRV8829", firmware: "1.7.6", uptime: "7 days", lastService: "2025-11-22", jams30d: 0, costPerPage: "KES 2.10", monthlyDuty: "30,000 pp/mo", lifetimePages: 38420, jobs30d: 142, avgJobSize: 22.6, duplexRate: 40 },
+    { id: "PR-021", name: "Brother HL-L8360CDW", location: "Kericho · Plant Floor", status: "ok", toner: [76,62,58,70], mono: false, paper: 92, pages30d: 18420, utilization: 58, recommendation: "keep",
+      ip: "10.6.11.09", mac: "04:0E:C2:71:90:CC", serial: "U64892A", firmware: "V1.40", uptime: "58 days", lastService: "2026-01-09", jams30d: 1, costPerPage: "KES 2.90", monthlyDuty: "30,000 pp/mo", lifetimePages: 214580, jobs30d: 602, avgJobSize: 30.6, duplexRate: 81 },
+    { id: "PR-012", name: "HP Color LaserJet E55040", location: "HQ · Floor 2 · Marketing", status: "ok", toner: [64,44,51,38], mono: false, paper: 72, pages30d: 22410, utilization: 64, recommendation: "keep",
+      ip: "10.4.22.31", mac: "88:A2:6C:33:41:11", serial: "CN-X44218", firmware: "2303B", uptime: "201 days", lastService: "2026-01-15", jams30d: 3, costPerPage: "KES 3.40", monthlyDuty: "45,000 pp/mo", lifetimePages: 528120, jobs30d: 842, avgJobSize: 26.6, duplexRate: 64 },
+    { id: "PR-028", name: "Kyocera ECOSYS P3260dn", location: "Nakuru · Warehouse", status: "neutral", toner: [48,0,0,0], mono: true, paper: 45, pages30d: 9810, utilization: 33, recommendation: "keep",
+      ip: "10.7.02.12", mac: "00:C0:EE:76:55:01", serial: "KYC60281", firmware: "V2.12", uptime: "21 days", lastService: "2026-02-02", jams30d: 0, costPerPage: "KES 1.90", monthlyDuty: "30,000 pp/mo", lifetimePages: 98400, jobs30d: 330, avgJobSize: 29.7, duplexRate: 55 },
+  ],
+  stock: [
+    { name: "HP 414A black toner", sku: "W2020A", qty: 18, cap: 25 },
+    { name: "HP 414A cyan toner", sku: "W2021A", qty: 9, cap: 25 },
+    { name: "HP 414A magenta toner", sku: "W2023A", qty: 11, cap: 25 },
+    { name: "A4 paper (500/ream)", sku: "KCP-A4", qty: 3, cap: 40 },
+    { name: "Canon C-EXV49 magenta", sku: "8526B002", qty: 11, cap: 20 },
+    { name: "Staple cartridge (SR1)", sku: "STPL-SR1", qty: 14, cap: 20 },
+  ],
+  tickets: [
+    { id: "TKT-2341", title: "Paper jam recurring at feed tray", device: "PR-004 · Mombasa Export", priority: "high", status: "inprogress", age: "2h ago", assignee: "J. Kamau" },
+    { id: "TKT-2344", title: "Schedule toner replacement", device: "PR-009 · Kericho Plant", priority: "medium", status: "open", age: "6h ago", assignee: "—" },
+    { id: "TKT-2346", title: "Firmware update available", device: "PR-017 · HQ Finance", priority: "low", status: "scheduled", age: "1d ago", assignee: "A. Wangari" },
+  ],
+  policies: [
+    { id: "pol-1", name: "Duplex by default", desc: "Force two-sided printing for all mono jobs.", enabled: true },
+    { id: "pol-2", name: "Secure release", desc: "Hold color jobs until user tap at device.", enabled: true },
+    { id: "pol-3", name: "Monthly quota enforcement", desc: "Block users over 2,000 pages / month.", enabled: false },
+    { id: "pol-4", name: "Color routing", desc: "Route color jobs to nearest color-capable device.", enabled: true },
+  ],
+  users: [
+    { name: "Teresia Mwangi", dept: "Finance", initials: "TM", color: "#a4262c", pages: 2240, cost: 8512, quota: 2000 },
+    { name: "John Kamau", dept: "Operations", initials: "JK", color: "#0f6cbd", pages: 1820, cost: 6916, quota: 2000 },
+    { name: "Ann Wangari", dept: "Exports", initials: "AW", color: "#835c00", pages: 1510, cost: 5738, quota: 2000 },
+    { name: "Nicolas Otieno", dept: "HR", initials: "NO", color: "#107c10", pages: 940, cost: 3572, quota: 2000 },
+  ],
+  costs: [
+    { dept: "Finance", mono: 46200, color: 12200 },
+    { dept: "Operations", mono: 34100, color: 8000 },
+    { dept: "Exports", mono: 22400, color: 16500 },
+    { dept: "HR", mono: 7800, color: 1000 },
+  ],
+  realloc: [
+    { from: { name:"PR-009 Xerox", location:"Kericho · Plant Admin", utilLabel:"Underused 14%" },
+      to:   { name:"PR-017 Canon", location:"HQ · Finance", utilLabel:"Over duty 94%" },
+      reason:"Redirects 28,540 pp/mo · saves KES 12,400 / mo" },
+    { from: { name:"PR-028 Kyocera", location:"Nakuru · Warehouse", utilLabel:"Underused 33%" },
+      to:   { name:"PR-004 HP", location:"Mombasa · Export", utilLabel:"Over duty 94%" },
+      reason:"Balances export-dock load · 18,200 pp/mo" },
+  ],
+  seedEvents: [
+    { id:"e1", deviceId:"PR-004", deviceName:"PR-004 · Mombasa Export", type:"jam", level:"critical", message:"Paper jam detected", timestamp: new Date(Date.now()-2*60000).toISOString() },
+    { id:"e2", deviceId:"PR-017", deviceName:"PR-017 · HQ Finance", type:"cover_open", level:"critical", message:"Cover open", timestamp: new Date(Date.now()-4*60000).toISOString() },
+    { id:"e3", deviceId:"PR-009", deviceName:"PR-009 · Kericho Plant", type:"toner_low", level:"warning", message:"Toner low (12%)", timestamp: new Date(Date.now()-11*60000).toISOString() },
+    { id:"e4", deviceId:"PR-021", deviceName:"PR-021 · Kericho Plant Floor", type:"online", level:"ok", message:"Device back online", timestamp: new Date(Date.now()-14*60000).toISOString() },
+    { id:"e5", deviceId:"PR-012", deviceName:"PR-012 · HQ Marketing", type:"job_complete", level:"ok", message:"Job completed (142 pp)", timestamp: new Date(Date.now()-19*60000).toISOString() },
+  ],
+};

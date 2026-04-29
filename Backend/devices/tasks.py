@@ -35,6 +35,7 @@ from pysnmp.hlapi.v3arch.asyncio import (
 )
 
 from .models import Printer, PrinterLog, PrinterDailyStat, SupplyLevel, Consumable
+from .alerts import send_printer_down_alert, send_low_toner_alert, clear_printer_down_alert
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,7 @@ class PrinterOIDs:
     # Status Code Mappings
     PRINTER_STATUS_MAP = {
         1: "Other",
+        2: "Sleeping",  # hrPrinterStatus=2 (unknown) used by HP/Kyocera/Lexmark during power-save
         3: "Idle",
         4: "Printing",
         5: "Warming Up",
@@ -131,25 +133,47 @@ SUPPLY_POLL_INTERVAL_SECONDS = int(os.environ.get("SUPPLY_POLL_INTERVAL_SECONDS"
 def _supply_category(name: str) -> str:
     """
     Map supply description to category for better organization.
-    
+
     Args:
         name: Supply description from SNMP (e.g., "Black Toner Cartridge")
-    
+
     Returns:
         Category string: "Toner", "Drum Unit", "Maintenance", "Waste Bin"
     """
     description = (name or "").lower()
-    
+
     if any(keyword in description for keyword in ["waste", "collection", "bin"]):
         return "Waste Bin"
-    
+
     if any(keyword in description for keyword in ["fuser", "belt", "transfer", "roller", "kit"]):
         return "Maintenance"
-    
+
     if "drum" in description:
         return "Drum Unit"
-    
+
     return "Toner"
+
+
+_SUPPLY_CATEGORY_TO_CONSUMABLE = {
+    "Waste Bin": Consumable.Category.WASTE_TONER,
+    "Maintenance": Consumable.Category.MAINTENANCE_KIT,
+    "Drum Unit": Consumable.Category.DRUM,
+    "Toner": Consumable.Category.TONER,
+}
+
+
+def _supply_color(name: str) -> Optional[str]:
+    """Infer toner color from supply name."""
+    n = (name or "").lower()
+    if any(k in n for k in ("black", " bk", "-bk")):
+        return "Black"
+    if "cyan" in n:
+        return "Cyan"
+    if "magenta" in n:
+        return "Magenta"
+    if "yellow" in n:
+        return "Yellow"
+    return None
 
 
 async def _get_snmp_value(
@@ -428,13 +452,14 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
     
     try:
         # Fetch all core OIDs concurrently
-        status_val, page_val, health_val, toner_val, uptime_val, console_val = await asyncio.gather(
+        status_val, page_val, health_val, toner_val, uptime_val, console_val, jam_val = await asyncio.gather(
             _get_snmp_value(snmp_engine, ip, PrinterOIDs.PRINTER_STATUS),
             _get_snmp_value(snmp_engine, ip, PrinterOIDs.PAGE_COUNT),
             _get_snmp_value(snmp_engine, ip, PrinterOIDs.DEVICE_STATUS),
             _get_snmp_value(snmp_engine, ip, PrinterOIDs.SUPPLY_CURRENT_LEVEL),
             _get_snmp_value(snmp_engine, ip, PrinterOIDs.SYS_UPTIME),
             _get_snmp_value(snmp_engine, ip, PrinterOIDs.CONSOLE_DISPLAY),
+            _get_snmp_value(snmp_engine, ip, PrinterOIDs.INPUT_JAMS),
             return_exceptions=True
         )
         
@@ -446,11 +471,15 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
             logger.warning(f"Printer {ip} is OFFLINE (no SNMP response)")
             result["status"] = "offline"
             result["error"] = "No SNMP response"
-            
-            # Update printer as offline
-            await sync_to_async(printer.save)(update_fields=["last_polled_at"])
+
+            # Mark printer as Down and clear current_status
             printer.last_polled_at = now
-            
+            printer.device_health = Printer.DeviceHealth.DOWN
+            printer.current_status = None
+            await sync_to_async(printer.save)(
+                update_fields=["last_polled_at", "device_health", "current_status"]
+            )
+
             # Create OFFLINE log entry
             await sync_to_async(PrinterLog.objects.create)(
                 printer=printer,
@@ -458,14 +487,22 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
                 event_type=PrinterLog.EventType.OFFLINE,
                 console_display="Device not responding to SNMP",
             )
-            
+
             return result
         
     except asyncio.TimeoutError:
         logger.warning(f"Printer {ip} timed out after {SNMP_TIMEOUT}s")
         result["status"] = "timeout"
         result["error"] = f"Timeout after {SNMP_TIMEOUT}s"
-        
+
+        # Mark printer as Down
+        printer.last_polled_at = now
+        printer.device_health = Printer.DeviceHealth.DOWN
+        printer.current_status = None
+        await sync_to_async(printer.save)(
+            update_fields=["last_polled_at", "device_health", "current_status"]
+        )
+
         # Create OFFLINE log entry
         await sync_to_async(PrinterLog.objects.create)(
             printer=printer,
@@ -473,7 +510,7 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
             event_type=PrinterLog.EventType.OFFLINE,
             console_display=f"SNMP timeout after {SNMP_TIMEOUT}s",
         )
-        
+
         return result
     
     except Exception as e:
@@ -535,7 +572,22 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
     console_display = None
     if console_val and not isinstance(console_val, Exception):
         console_display = str(console_val)[:255]
-    
+
+    # Parse jam count
+    jam_total = None
+    if jam_val and not isinstance(jam_val, Exception):
+        try:
+            jam_total = int(jam_val)
+        except (ValueError, TypeError):
+            pass
+
+    # Detect sleep/power-save via console display text for printers that don't
+    # report hrPrinterStatus=2 but show sleep text on their display panel.
+    _SLEEP_KEYWORDS = ("SLEEP", "POWER SAVE", "POWER-SAVE", "ENERGY SAVE", "STANDBY", "HIBERNAT")
+    if current_status is None or current_status == 1:  # null or "Other"
+        if console_display and any(kw in console_display.upper() for kw in _SLEEP_KEYWORDS):
+            current_status = Printer.CurrentStatus.SLEEPING
+
     # ========================================================================
     # STEP 3: Update Printer Model
     # ========================================================================
@@ -547,7 +599,15 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
     
     printer.last_polled_at = now
     printer.last_latency_ms = latency_ms
-    
+
+    # Compute jam delta for this poll
+    jam_delta = 0
+    if jam_total is not None:
+        if printer.last_known_jam_total is not None and jam_total >= printer.last_known_jam_total:
+            jam_delta = jam_total - printer.last_known_jam_total
+        printer.last_known_jam_total = jam_total
+        update_fields.append("last_known_jam_total")
+
     if current_status is not None:
         printer.current_status = current_status
         update_fields.append("current_status")
@@ -592,6 +652,9 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
                 update_fields.append("is_in_alert_state")
                 should_send_critical_down = True
                 logger.critical(f"CRITICAL: Printer {ip} has been Down for {elapsed:.0f}s")
+                await sync_to_async(send_printer_down_alert)(
+                    printer.name or ip, ip, elapsed
+                )
     else:
         # Printer recovered before cool-off - suppress false alarm
         if printer.alert_triggered_at or printer.is_in_alert_state:
@@ -599,6 +662,7 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
             printer.is_in_alert_state = False
             update_fields.extend(["alert_triggered_at", "is_in_alert_state"])
             logger.info(f"Printer {ip} recovered (false alarm suppressed)")
+            await sync_to_async(clear_printer_down_alert)(ip)
     
     # Maintenance kit saturation check
     if (
@@ -618,7 +682,7 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
     
     today = timezone.now().date()
     
-    def _update_daily_stat():
+    def _update_daily_stat(_jam_delta=jam_delta):
         stat, created = PrinterDailyStat.objects.get_or_create(
             printer=printer,
             date=today,
@@ -644,7 +708,13 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
         if uptime_minutes is not None:
             stat.uptime_minutes = uptime_minutes
             stat_update_fields.append("uptime_minutes")
-        
+
+        # Accumulate jams
+        if _jam_delta > 0:
+            stat.jams_today += _jam_delta
+            stat.jam_count += _jam_delta
+            stat_update_fields.extend(["jams_today", "jam_count"])
+
         # Update average latency (rolling average)
         stat.avg_latency_ms = (stat.avg_latency_ms + latency_ms) // 2
         
@@ -672,7 +742,7 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
             event_type = PrinterLog.EventType.OFFLINE
         elif device_health == 3:
             status_str = "Warning"
-            event_type = PrinterLog.EventType.PAPER_JAM
+            event_type = PrinterLog.EventType.STATUS_CHECK
         log = await sync_to_async(PrinterLog.objects.create)(
             printer=printer,
             total_pages=total_page_count,
@@ -734,12 +804,148 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
                             max_capacity=max_capacity,
                             current_level=current_level,
                         )
+                        # Upsert Consumable so the detail page always has data
+                        consumable_category = _SUPPLY_CATEGORY_TO_CONSUMABLE.get(
+                            category, Consumable.Category.TONER
+                        )
+                        def _upsert_consumable(
+                            _printer=printer,
+                            _name=name[:100],
+                            _cat=consumable_category,
+                            _color=_supply_color(name),
+                            _pct=level_percent,
+                            _cur=current_level,
+                            _max=max_capacity,
+                        ):
+                            Consumable.objects.update_or_create(
+                                printer=_printer,
+                                name=_name,
+                                defaults={
+                                    "category": _cat,
+                                    "color": _color,
+                                    "level_percent": _pct,
+                                    "current_level": _cur if _cur >= 0 else None,
+                                    "max_capacity": _max if _max > 0 else None,
+                                },
+                            )
+                        await sync_to_async(_upsert_consumable)()
+
+                        # Calculate consumption rate from previous SupplyLevel
+                        def _update_consumption_rate(
+                            _printer=printer, _name=name[:100], _pct=level_percent,
+                            _now=now,
+                        ):
+                            prev = (
+                                SupplyLevel.objects
+                                .filter(log__printer=_printer, name=_name)
+                                .exclude(log=log)
+                                .select_related("log")
+                                .order_by("-log__timestamp")
+                                .first()
+                            )
+                            if not prev or not prev.log:
+                                return
+                            delta_days = (_now - prev.log.timestamp).total_seconds() / 86400.0
+                            if delta_days <= 0:
+                                return
+                            level_drop = prev.level_percent - _pct
+                            if level_drop <= 0:
+                                return  # Level didn't drop (refilled or same)
+                            new_rate = level_drop / delta_days
+                            consumable = Consumable.objects.filter(
+                                printer=_printer, name=_name
+                            ).first()
+                            if not consumable:
+                                return
+                            # Rolling average with existing rate
+                            if consumable.consumption_rate_per_day:
+                                rate = (consumable.consumption_rate_per_day + new_rate) / 2
+                            else:
+                                rate = new_rate
+                            # Pages remaining estimate: use daily page count from DailyStat
+                            from django.utils import timezone as tz
+                            from datetime import timedelta
+                            recent_stats = list(
+                                PrinterDailyStat.objects.filter(
+                                    printer=_printer,
+                                    date__gte=tz.now().date() - timedelta(days=7),
+                                ).values_list("pages_printed_today", flat=True)
+                            )
+                            avg_pages_per_day = (
+                                sum(recent_stats) / len(recent_stats) if recent_stats else None
+                            )
+                            days_remaining = _pct / rate if rate > 0 else None
+                            pages_remaining = (
+                                int(days_remaining * avg_pages_per_day)
+                                if days_remaining and avg_pages_per_day
+                                else None
+                            )
+                            Consumable.objects.filter(pk=consumable.pk).update(
+                                consumption_rate_per_day=round(rate, 4),
+                                estimated_days_remaining=round(days_remaining, 1) if days_remaining else None,
+                                estimated_pages_remaining=pages_remaining,
+                            )
+                        await sync_to_async(_update_consumption_rate)()
                         logger.debug(f"Supply: {name} = {level_percent}%")
+
+                        # Low toner alert
+                        from django.conf import settings as _settings
+                        _threshold = getattr(_settings, "ALERT_LOW_TONER_THRESHOLD", 10)
+                        if level_percent <= _threshold:
+                            await sync_to_async(send_low_toner_alert)(
+                                printer.name or ip, ip, name, level_percent
+                            )
                     except (ValueError, TypeError) as e:
                         logger.debug(f"Failed to parse supply data for {ip}: {e}")
         except Exception as e:
             logger.debug(f"Supply fetch for {ip} failed: {e}")
-    
+
+        # Walk alert table → active_alerts on the log
+        try:
+            alert_rows = await _walk_snmp_table(
+                snmp_engine, ip, PrinterOIDs.ALERT_DESCRIPTION, timeout=SNMP_TIMEOUT
+            )
+            if alert_rows:
+                alerts = [v for _, v in alert_rows if v and v.strip() and v != "No Entry"]
+                if alerts:
+                    log.active_alerts = alerts
+                    await sync_to_async(log.save)(update_fields=["active_alerts"])
+        except Exception as e:
+            logger.debug(f"Alert table walk for {ip} failed: {e}")
+
+        # Walk paper trays → tray_status on the log
+        try:
+            tray_name_rows = await _walk_snmp_table(
+                snmp_engine, ip, PrinterOIDs.INPUT_NAME, timeout=SNMP_TIMEOUT
+            )
+            tray_data = []
+            for name_oid, tray_name in tray_name_rows:
+                # OID ends with .hrDeviceIndex.inputIndex — last component is inputIndex
+                parts = name_oid.rsplit(".", 1)
+                if len(parts) < 2:
+                    continue
+                idx = parts[1]
+                capacity = await _get_snmp_value(
+                    snmp_engine, ip, f"{PrinterOIDs.INPUT_CAPACITY}.1.{idx}", timeout=SNMP_TIMEOUT
+                )
+                current = await _get_snmp_value(
+                    snmp_engine, ip, f"{PrinterOIDs.INPUT_CURRENT}.1.{idx}", timeout=SNMP_TIMEOUT
+                )
+                jams = await _get_snmp_value(
+                    snmp_engine, ip, f"{PrinterOIDs.INPUT_JAMS}.1.{idx}", timeout=SNMP_TIMEOUT
+                ) if idx else None
+                tray_data.append({
+                    "name": tray_name or f"Tray {idx}",
+                    "capacity": int(capacity) if capacity and capacity.lstrip("-").isdigit() else None,
+                    "current": int(current) if current and current.lstrip("-").isdigit() else None,
+                    "jams": int(jams) if jams and jams.lstrip("-").isdigit() else None,
+                })
+            if tray_data:
+                log.tray_status = tray_data
+                await sync_to_async(log.save)(update_fields=["tray_status"])
+        except Exception as e:
+            logger.debug(f"Tray walk for {ip} failed: {e}")
+
     # ========================================================================
     # STEP 8: WebSocket Broadcast (Optional - requires Channels)
     # ========================================================================

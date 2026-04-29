@@ -1,0 +1,218 @@
+/* =========================================================
+   Ketepa Print Fleet — Design Tokens
+   Fluent 2 (Microsoft 365 light theme) — canonical values.
+   Do not invent new tokens; use these semantic vars directly.
+   ========================================================= */
+
+:root {
+  /* ---------- Brand ---------- */
+  --m365-brand:          #0f6cbd;
+  --m365-brand-hover:    #115ea3;
+  --m365-brand-pressed:  #0c3b5e;
+  --m365-brand-tint-10:  #ebf3fc;
+  --m365-brand-tint-20:  #d0e2f5;
+  --m365-brand-tint-40:  #9ec7ee;
+
+  /* ---------- Neutral backgrounds ---------- */
+  --neutral-bg-1:        #ffffff;    /* card surfaces */
+  --neutral-bg-2:        #fafafa;    /* nav, table header, command bar */
+  --neutral-bg-3:        #f5f5f5;    /* hover states, empty tracks */
+  --neutral-bg-canvas:   #faf9f8;    /* page background */
+
+  /* ---------- Neutral strokes ---------- */
+  --neutral-stroke-1:        #d1d1d1;   /* button borders */
+  --neutral-stroke-2:        #e0e0e0;   /* card borders */
+  --neutral-stroke-divider:  #f0f0f0;   /* row dividers */
+
+  /* ---------- Neutral foregrounds ---------- */
+  --neutral-fg-1:        #242424;    /* primary text, headings */
+  --neutral-fg-2:        #424242;    /* secondary text */
+  --neutral-fg-3:        #616161;    /* tertiary / labels */
+  --neutral-fg-hint:     #8a8886;    /* placeholder */
+  --neutral-fg-disabled: #bdbdbd;
+
+  /* ---------- Status — Success ---------- */
+  --status-success-bg:     #dff6dd;
+  --status-success-fg:     #107c10;
+  --status-success-border: #9fd89f;
+
+  /* ---------- Status — Warning ---------- */
+  --status-warning-bg:     #fff4ce;
+  --status-warning-fg:     #835c00;
+  --status-warning-border: #fdcfb4;
+
+  /* ---------- Status — Danger ---------- */
+  --status-danger-bg:      #fde7e9;
+  --status-danger-fg:      #a4262c;
+  --status-danger-border:  #f1bbbc;
+
+  /* ---------- Status — Info ---------- */
+  --status-info-bg:        #ebf3fc;
+  --status-info-fg:        #0f6cbd;
+  --status-info-border:    #9ec7ee;
+
+  /* ---------- Toner channel colors ---------- */
+  --toner-k: #242424;     /* black */
+  --toner-c: #009dd8;     /* cyan */
+  --toner-m: #d83b9d;     /* magenta */
+  --toner-y: #f2c811;     /* yellow */
+  --toner-p: #616161;     /* paper */
+
+  /* ---------- Shadows (Fluent depth) ---------- */
+  --shadow-2:  0 1px 2px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow-4:  0 2px 4px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow-8:  0 4px 8px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow-16: 0 8px 16px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+  --shadow-28: 0 14px 28px rgba(0,0,0,0.16), 0 0 8px rgba(0,0,0,0.12);
+
+  /* ---------- Radii ---------- */
+  --radius-small:   2px;     /* badge, bar fill */
+  --radius-control: 4px;     /* buttons, inputs, chips */
+  --radius-card:    8px;     /* cards, panels */
+  --radius-pill:    999px;
+
+  /* ---------- Spacing scale (4/8 grid) ---------- */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-7:  32px;
+  --sp-8:  40px;
+  --sp-9:  48px;
+
+  /* ---------- Type: family ---------- */
+  --font-sans:
+    'Segoe UI', 'Segoe UI Web (West European)', -apple-system,
+    BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+
+  /* ---------- Type: Fluent 2 ramp ---------- */
+  --fs-100: 10px;  --lh-100: 14px;   /* caption-2 */
+  --fs-200: 12px;  --lh-200: 16px;   /* caption-1 */
+  --fs-300: 14px;  --lh-300: 20px;   /* body-1   */
+  --fs-400: 16px;  --lh-400: 22px;   /* body-2   */
+  --fs-500: 20px;  --lh-500: 28px;   /* subtitle-2 */
+  --fs-600: 24px;  --lh-600: 32px;   /* subtitle-1 / page title */
+  --fs-700: 28px;  --lh-700: 36px;   /* title-3 */
+  --fs-800: 32px;  --lh-800: 40px;   /* title-2 / KPI numeric */
+  --fs-900: 40px;  --lh-900: 52px;   /* title-1 */
+
+  /* ---------- Weights ---------- */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold: 600;
+}
+
+/* =========================================================
+   Base & semantic type
+   ========================================================= */
+
+html, body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-300);
+  line-height: var(--lh-300);
+  color: var(--neutral-fg-1);
+  background: var(--neutral-bg-canvas);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Page title — e.g. "Print Fleet Dashboard" */
+h1, .h1 {
+  font-size: var(--fs-600);
+  line-height: var(--lh-600);
+  font-weight: var(--fw-semibold);
+  color: var(--neutral-fg-1);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* Card titles — "Live events", "Device fleet" */
+h2, .h2 {
+  font-size: var(--fs-500);
+  line-height: var(--lh-500);
+  font-weight: var(--fw-semibold);
+  color: var(--neutral-fg-1);
+  margin: 0;
+}
+
+/* Subsection titles inside cards */
+h3, .h3 {
+  font-size: var(--fs-400);
+  line-height: var(--lh-400);
+  font-weight: var(--fw-semibold);
+  color: var(--neutral-fg-1);
+  margin: 0;
+}
+
+/* Body copy */
+p, .body {
+  font-size: var(--fs-300);
+  line-height: var(--lh-300);
+  color: var(--neutral-fg-2);
+  margin: 0;
+}
+
+/* Small body / secondary */
+.body-sm, small {
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
+  color: var(--neutral-fg-3);
+}
+
+/* Labels — table headers, field labels */
+.label {
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
+  font-weight: var(--fw-medium);
+  color: var(--neutral-fg-3);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Numeric / metric — KPI values, page counts */
+.numeric {
+  font-size: var(--fs-800);
+  line-height: var(--lh-800);
+  font-weight: var(--fw-semibold);
+  color: var(--neutral-fg-1);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.numeric-sm {
+  font-size: var(--fs-500);
+  line-height: var(--lh-500);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Caption — timestamps, sublabels */
+.caption {
+  font-size: var(--fs-100);
+  line-height: var(--lh-100);
+  font-weight: var(--fw-regular);
+  color: var(--neutral-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Code / IDs — device IDs, MACs, IPs — still Segoe UI (spec: no mono for UI) */
+.mono-id {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-weight: var(--fw-medium);
+  color: var(--neutral-fg-2);
+}
+
+/* Links */
+a {
+  color: var(--m365-brand);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--m365-brand-hover);
+  text-decoration: underline;
+}

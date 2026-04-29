@@ -594,11 +594,52 @@ def login_view(request):
     if user is not None:
         token, _ = Token.objects.get_or_create(user=user)
         return Response({
-            'token': token.key,
-            'username': user.username,
-            'email': user.email or '',
+            'token':      token.key,
+            'username':   user.username,
+            'email':      user.email or '',
+            'first_name': user.first_name,
+            'last_name':  user.last_name,
+            'role':       user_role(user),
         })
     return Response({'error': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    """Self-registration: creates a Viewer-role account and returns a token."""
+    username   = request.data.get('username', '').strip()
+    password   = request.data.get('password', '')
+    email      = request.data.get('email', '').strip()
+    first_name = request.data.get('first_name', '').strip()
+    last_name  = request.data.get('last_name', '').strip()
+
+    if not username or not password:
+        return Response({'error': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if len(password) < 8:
+        return Response({'error': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'Username is already taken.'}, status=status.HTTP_400_BAD_REQUEST)
+    if email and User.objects.filter(email=email).exists():
+        return Response({'error': 'Email address is already in use.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.create_user(
+        username=username, password=password, email=email,
+        first_name=first_name, last_name=last_name,
+    )
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile.role = UserProfile.VIEWER
+    profile.save()
+
+    token, _ = Token.objects.get_or_create(user=user)
+    return Response({
+        'token':      token.key,
+        'username':   user.username,
+        'email':      user.email or '',
+        'first_name': user.first_name,
+        'last_name':  user.last_name,
+        'role':       UserProfile.VIEWER,
+    }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])

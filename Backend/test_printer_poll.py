@@ -2,7 +2,7 @@ import asyncio
 from pysnmp.hlapi.v3arch.asyncio import *
 
 # --- CONFIGURATION ---
-SUBNET_PREFIX = "192.168.30"
+SUBNET_PREFIX = "192.168."
 CONCURRENT_LIMIT = 2     # Low concurrency to be "stealthy"
 SCAN_DELAY = 0.1          # Delay between pings (seconds)
 

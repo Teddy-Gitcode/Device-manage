@@ -111,6 +111,8 @@ class PrinterSerializer(serializers.ModelSerializer):
     latest_supply_levels = serializers.SerializerMethodField(read_only=True)
     consumables = ConsumableSerializer(many=True, read_only=True)
     today_stats = serializers.SerializerMethodField(read_only=True)
+    health_score = serializers.SerializerMethodField(read_only=True)
+    predicted_service_info = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Printer
@@ -143,15 +145,26 @@ class PrinterSerializer(serializers.ModelSerializer):
             "latest_supply_levels",
             "consumables",
             "today_stats",
+            "health_score",
+            "predicted_service_info",
         ]
 
     def get_latest_supply_levels(self, obj):
-        """Return supply levels from the most recent PrinterLog for this printer."""
-        last_log = obj.logs.order_by("-timestamp").first()
+        """Return supply levels from the most recent PrinterLog that has supply data.
+
+        Uses the latest log WITH supplies so that offline/status-check logs
+        (which have no supply entries) don't hide the last known toner levels.
+        """
+        last_log = (
+            obj.logs
+            .filter(supplies__isnull=False)
+            .distinct()
+            .order_by("-timestamp")
+            .first()
+        )
         if not last_log:
             return []
-        supplies = last_log.supplies.all()
-        return SupplyLevelSerializer(supplies, many=True).data
+        return SupplyLevelSerializer(last_log.supplies.all(), many=True).data
 
     def get_today_stats(self, obj):
         """Return today's PrinterDailyStat for deep analytics (uses prefetched today_stats_list)."""
@@ -165,3 +178,117 @@ class PrinterSerializer(serializers.ModelSerializer):
         if not stat:
             return None
         return PrinterDailyStatSerializer(stat).data
+
+    def get_health_score(self, obj):
+        """
+        0-100 composite health score.
+        100 = perfect, 0 = critical.
+        Factors: device health, drum/fuser life, toner, jam rate (30d).
+        """
+        if obj.device_health == 5:  # Down
+            return 0
+
+        score = 100
+
+        if obj.device_health == 3:  # Warning
+            score -= 15
+
+        # Drum / fuser life — strongest predictor of repair need
+        for c in obj.consumables.filter(category__in=["DRUM", "MAINTENANCE_KIT"]):
+            if c.level_percent < 5:
+                score -= 35
+            elif c.level_percent < 20:
+                score -= 20
+            elif c.level_percent < 40:
+                score -= 8
+
+        # Min toner (operational but not mechanical)
+        if obj.min_supply_percent is not None:
+            if obj.min_supply_percent < 5:
+                score -= 10
+            elif obj.min_supply_percent < 10:
+                score -= 5
+
+        # Jam rate (30-day window)
+        from django.utils import timezone
+        from datetime import timedelta
+        thirty_days_ago = timezone.now().date() - timedelta(days=30)
+        stats = list(obj.daily_stats.filter(date__gte=thirty_days_ago))
+        total_jams = sum(s.jams_today for s in stats)
+        total_pages = sum(s.pages_printed_today for s in stats)
+        if total_pages > 100:
+            jam_rate = (total_jams / total_pages) * 1000
+            if jam_rate > 10:
+                score -= 25
+            elif jam_rate > 5:
+                score -= 15
+            elif jam_rate > 2:
+                score -= 5
+
+        return max(0, min(100, score))
+
+    def get_predicted_service_info(self, obj):
+        """
+        Returns maintenance/repair prediction data for decision making.
+        Fields:
+          health_label: 'Good' | 'Fair' | 'Poor' | 'Critical'
+          next_service_reason: human-readable reason for predicted service
+          drum_days_remaining: float or null
+          drum_pages_remaining: int or null
+          jam_rate_30d: jams per 1000 pages over last 30 days
+          total_jams_30d: raw jam count
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+
+        info = {
+            "health_label": "Good",
+            "next_service_reason": None,
+            "drum_days_remaining": None,
+            "drum_pages_remaining": None,
+            "jam_rate_30d": None,
+            "total_jams_30d": 0,
+        }
+
+        # Drum / fuser predictions
+        for c in obj.consumables.filter(category="DRUM"):
+            info["drum_days_remaining"] = c.estimated_days_remaining
+            info["drum_pages_remaining"] = c.estimated_pages_remaining
+            if c.level_percent < 20:
+                info["next_service_reason"] = (
+                    f"Drum unit at {c.level_percent}% — replacement needed soon"
+                )
+            break
+
+        for c in obj.consumables.filter(category="MAINTENANCE_KIT"):
+            if c.level_percent < 20 and not info["next_service_reason"]:
+                info["next_service_reason"] = (
+                    f"Maintenance kit at {c.level_percent}% — service due"
+                )
+            break
+
+        # Jam rate (30-day)
+        thirty_days_ago = timezone.now().date() - timedelta(days=30)
+        stats = list(obj.daily_stats.filter(date__gte=thirty_days_ago))
+        total_jams = sum(s.jams_today for s in stats)
+        total_pages = sum(s.pages_printed_today for s in stats)
+        info["total_jams_30d"] = total_jams
+        if total_pages > 0:
+            info["jam_rate_30d"] = round((total_jams / total_pages) * 1000, 2)
+        if total_jams > 10 and not info["next_service_reason"]:
+            info["next_service_reason"] = (
+                f"High jam frequency: {total_jams} jams in 30 days — inspect paper path"
+            )
+
+        # Health label from score
+        score = self.get_health_score(obj)
+        if score >= 80:
+            info["health_label"] = "Good"
+        elif score >= 60:
+            info["health_label"] = "Fair"
+        elif score >= 40:
+            info["health_label"] = "Poor"
+        else:
+            info["health_label"] = "Critical"
+
+        return info

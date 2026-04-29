@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stock inventory</title><link rel="stylesheet" href="card.css"></head>
+<body>
+<style>
+.item { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #f0f0f0; }
+.item:last-child { border:none; }
+.name { font-size:13px; font-weight:500; flex:1; }
+.sku { font-size:11px; color:#616161; font-variant-numeric: tabular-nums; }
+.bar { width:110px; height:6px; background:#f5f5f5; border-radius:3px; overflow:hidden; }
+.bar > div { height:100%; }
+.qty { font-size:12px; font-weight:600; font-variant-numeric: tabular-nums; width:40px; text-align:right; }
+</style>
+<div class="card" style="padding:14px 16px;">
+  <div style="font-size:14px; font-weight:600; margin-bottom:8px;">Consumable stock</div>
+  <div class="item"><span class="name">HP 414A black toner</span><span class="sku">W2020A</span><div class="bar"><div style="width:72%; background:#107c10;"></div></div><span class="qty">18</span></div>
+  <div class="item"><span class="name">HP 414A cyan toner</span><span class="sku">W2021A</span><div class="bar"><div style="width:36%; background:#835c00;"></div></div><span class="qty">9</span></div>
+  <div class="item"><span class="name">A4 paper (500/ream)</span><span class="sku">KCP-A4</span><div class="bar"><div style="width:14%; background:#a4262c;"></div></div><span class="qty">3</span></div>
+  <div class="item"><span class="name">Canon C-EXV49 magenta</span><span class="sku">8526B002</span><div class="bar"><div style="width:52%; background:#107c10;"></div></div><span class="qty">11</span></div>
+</div>
+</body></html>

@@ -1,0 +1,27 @@
+# Secrets — never commit
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.sqlite3
+celerybeat-schedule
+celerybeat.pid
+
+# Node / Astro
+node_modules/
+.astro/
+dist/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
