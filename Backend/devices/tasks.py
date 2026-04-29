@@ -114,6 +114,10 @@ SCAN_TIMEOUT = 0.5  # Fast timeout for discovery
 CONCURRENT_LIMIT = 50  # Max concurrent SNMP requests (polling uses POLL_CONCURRENT_LIMIT)
 COOL_OFF_SECONDS = 60  # SRE actionable alerting: suppress Down alerts for 60s
 
+# Keywords for classifying active alert messages from the printer's SNMP alert table
+JAM_KEYWORDS   = ("jam", "paper feed", "media jam", "paper path", "paper misfeed")
+COVER_KEYWORDS = ("cover open", "door open", "cover is open", "door is open", "front cover", "rear cover", "side cover")
+
 # Discovery: limit scope and concurrency to reduce resource use
 # DISCOVERY_RANGES: comma-separated /24 prefixes, e.g. "192.168.10,192.168.11" (only those subnets)
 # If unset, scans full SUBNET_PREFIX.0.0/16 (e.g. 192.168.x.x)
@@ -692,32 +696,33 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
                 "avg_latency_ms": 0,
                 "jam_count": 0,
                 "jams_today": 0,
+                "cover_opens_today": 0,
             },
         )
-        
+
         stat_update_fields = ["avg_latency_ms"]
-        
+
         # Update page count delta
         if total_page_count is not None and old_pages is not None and total_page_count > old_pages:
             delta = total_page_count - old_pages
             stat.total_pages_printed += delta
             stat.pages_printed_today += delta
             stat_update_fields.extend(["total_pages_printed", "pages_printed_today"])
-        
+
         # Update uptime
         if uptime_minutes is not None:
             stat.uptime_minutes = uptime_minutes
             stat_update_fields.append("uptime_minutes")
 
-        # Accumulate jams
+        # Accumulate jams (SNMP counter delta)
         if _jam_delta > 0:
             stat.jams_today += _jam_delta
-            stat.jam_count += _jam_delta
+            stat.jam_count  += _jam_delta
             stat_update_fields.extend(["jams_today", "jam_count"])
 
         # Update average latency (rolling average)
         stat.avg_latency_ms = (stat.avg_latency_ms + latency_ms) // 2
-        
+
         stat.save(update_fields=list(dict.fromkeys(stat_update_fields)))
     
     await sync_to_async(_update_daily_stat)()
@@ -753,9 +758,78 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
         )
     
     # ========================================================================
-    # STEP 7: Fetch Supply Levels only when we have a log and not recently
+    # STEP 7: Fetch alert table every poll — detect jams / open covers
     # ========================================================================
-    
+
+    channel_layer = get_channel_layer()
+
+    try:
+        alert_rows = await _walk_snmp_table(
+            snmp_engine, ip, PrinterOIDs.ALERT_DESCRIPTION, timeout=SNMP_TIMEOUT
+        )
+        current_alerts = [v for _, v in alert_rows if v and v.strip() and v != "No Entry"] if alert_rows else []
+    except Exception as e:
+        logger.debug(f"Alert table walk for {ip} failed: {e}")
+        current_alerts = []
+
+    is_jam        = False
+    is_cover_open = False
+
+    if current_alerts:
+        is_jam        = any(kw in a.lower() for a in current_alerts for kw in JAM_KEYWORDS)
+        is_cover_open = (not is_jam) and any(kw in a.lower() for a in current_alerts for kw in COVER_KEYWORDS)
+
+        if log is not None:
+            upd = ["active_alerts"]
+            log.active_alerts = current_alerts
+            if is_jam:
+                log.event_type = PrinterLog.EventType.PAPER_JAM
+                log.status = "Paper Jam"
+                upd.extend(["event_type", "status"])
+            elif is_cover_open:
+                log.status = "Cover Open"
+                upd.append("status")
+            await sync_to_async(log.save)(update_fields=upd)
+
+        if (is_jam or is_cover_open) and channel_layer:
+            ws_event = "paper_jam" if is_jam else "cover_open"
+            ws_label = "Paper Jam" if is_jam else "Cover Open"
+            await channel_layer.group_send(
+                "printers_status",
+                {
+                    "type":            "printer_status_update",
+                    "printer_id":      printer.id,
+                    "printer_name":    printer.name or ip,
+                    "ip_address":      ip,
+                    "current_status":  printer.current_status,
+                    "device_health":   printer.device_health,
+                    "min_supply_percent": printer.min_supply_percent,
+                    "total_page_count":   printer.total_page_count,
+                    "last_polled_at":  now.isoformat() if now else None,
+                    "event":           ws_event,
+                    "event_label":     ws_label,
+                    "alert_messages":  current_alerts,
+                },
+            )
+
+    # ── Cover open transition: only count the moment the cover first opens ────
+    cover_just_opened = is_cover_open and not printer.last_cover_was_open
+    if printer.last_cover_was_open != is_cover_open:
+        printer.last_cover_was_open = is_cover_open
+        await sync_to_async(printer.save)(update_fields=["last_cover_was_open"])
+
+    if cover_just_opened:
+        from django.db.models import F
+        await sync_to_async(
+            lambda: PrinterDailyStat.objects.filter(printer=printer, date=today).update(
+                cover_opens_today=F("cover_opens_today") + 1
+            )
+        )()
+
+    # ========================================================================
+    # STEP 8: Fetch supply levels (every 30 min) + tray walk
+    # ========================================================================
+
     do_supply_walk = False
     if log is not None:
         def _should_do_supply_walk():
@@ -767,7 +841,7 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
             ).filter(timestamp__gte=recent).exists()
             return not has_recent
         do_supply_walk = await sync_to_async(_should_do_supply_walk)()
-    
+
     if do_supply_walk and log is not None:
         try:
             supply_rows = await _walk_snmp_table(
@@ -900,19 +974,6 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
         except Exception as e:
             logger.debug(f"Supply fetch for {ip} failed: {e}")
 
-        # Walk alert table → active_alerts on the log
-        try:
-            alert_rows = await _walk_snmp_table(
-                snmp_engine, ip, PrinterOIDs.ALERT_DESCRIPTION, timeout=SNMP_TIMEOUT
-            )
-            if alert_rows:
-                alerts = [v for _, v in alert_rows if v and v.strip() and v != "No Entry"]
-                if alerts:
-                    log.active_alerts = alerts
-                    await sync_to_async(log.save)(update_fields=["active_alerts"])
-        except Exception as e:
-            logger.debug(f"Alert table walk for {ip} failed: {e}")
-
         # Walk paper trays → tray_status on the log
         try:
             tray_name_rows = await _walk_snmp_table(
@@ -947,10 +1008,9 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
             logger.debug(f"Tray walk for {ip} failed: {e}")
 
     # ========================================================================
-    # STEP 8: WebSocket Broadcast (Optional - requires Channels)
+    # STEP 9: WebSocket Broadcast — status changes and critical down
     # ========================================================================
-    
-    channel_layer = get_channel_layer()
+
     if channel_layer:
         if should_send_critical_down:
             # Send critical Down alert after cool-off
@@ -1001,7 +1061,7 @@ async def _poll_single_printer(snmp_engine: SnmpEngine, printer: Printer) -> Dic
             )
     
     # ========================================================================
-    # STEP 9: Return Success
+    # STEP 10: Return Success
     # ========================================================================
     
     result["success"] = True

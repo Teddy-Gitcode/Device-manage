@@ -254,7 +254,13 @@ export function SuiteHeader({ onMenuClick }: { onMenuClick?: () => void }) {
                 events.slice(0, 5).map(e => {
                   const Icon = LEVEL_ICON[e.level] ?? IconInfo
                   return (
-                    <div key={e.id} className="header-dropdown-item" style={{ gap: 10, alignItems: 'flex-start' }}>
+                    <Link
+                      key={e.id}
+                      href={`/devices/${e.deviceId}`}
+                      className="header-dropdown-item"
+                      style={{ gap: 10, alignItems: 'flex-start', textDecoration: 'none' }}
+                      onClick={() => setNotifOpen(false)}
+                    >
                       <Icon size={14} style={{ color: LEVEL_COLOR[e.level], flexShrink: 0, marginTop: 1 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}>{e.message}</div>
@@ -262,7 +268,7 @@ export function SuiteHeader({ onMenuClick }: { onMenuClick?: () => void }) {
                           {e.deviceName} · {relTime(e.timestamp)}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })
               )}

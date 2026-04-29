@@ -26,6 +26,7 @@ export interface Device {
   mono:           boolean
   lastService:    string
   jams30d:        number
+  coverOpens30d:  number
   costPerPage:    string
   monthlyDuty:    string
   lifetimePages:  number
@@ -33,6 +34,7 @@ export interface Device {
   avgJobSize:     number
   duplexRate:     number
   healthScore:    number
+  activeAlerts:   string[]
 }
 
 export interface PrinterEvent {

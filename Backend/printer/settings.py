@@ -159,9 +159,9 @@ from celery.schedules import crontab
 _discovery_enabled = os.environ.get("DISCOVERY_ENABLED", "true").strip().lower() == "true"
 
 CELERY_BEAT_SCHEDULE = {
-    "poll-active-printers-every-5min": {
+    "poll-active-printers": {
         "task": "devices.poll_active_printers",
-        "schedule": 300.0,  # 5 minutes
+        "schedule": 30.0,  # 30 seconds
     },
 }
 if _discovery_enabled:

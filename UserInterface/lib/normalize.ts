@@ -41,6 +41,18 @@ interface BackendPrinter {
   consumables: BackendConsumableAlert[]
   today_stats: BackendDailyStat | null
   health_score: number
+  active_alerts_current: string[]
+  predicted_service_info: {
+    total_jams_30d:        number
+    total_cover_opens_30d: number
+  } | null
+  page_stats: {
+    today:      number
+    this_week:  number
+    this_month: number
+    last_month: number
+    daily:      { date: string; pages: number }[]
+  } | null
 }
 
 interface BackendConsumable {
@@ -146,7 +158,6 @@ export function normalizeDevice(d: BackendPrinter): Device {
     toner,
     tonerNames,
     paper:          paperSupply?.level_percent ?? 100,
-    pages30d,
     utilization:    util,
     recommendation: deriveRecommendation(d.health_score, util),
     ip:             d.ip_address,
@@ -156,7 +167,9 @@ export function normalizeDevice(d: BackendPrinter): Device {
     uptime:         '—',
     mono,
     lastService:    d.last_serviced_date ?? '—',
-    jams30d:        d.today_stats?.jams_today ?? 0,
+    jams30d:        d.predicted_service_info?.total_jams_30d ?? d.today_stats?.jams_today ?? 0,
+    coverOpens30d:  d.predicted_service_info?.total_cover_opens_30d ?? 0,
+    pages30d:       d.page_stats?.this_month ?? 0,
     costPerPage:    d.cost_per_page_mono ? `KES ${d.cost_per_page_mono}` : '—',
     monthlyDuty:    `${monthlyVol.toLocaleString()} pp/mo`,
     lifetimePages:  d.total_page_count ?? 0,
@@ -164,6 +177,7 @@ export function normalizeDevice(d: BackendPrinter): Device {
     avgJobSize:     0,
     duplexRate:     0,
     healthScore:    d.health_score ?? 0,
+    activeAlerts:   d.active_alerts_current ?? [],
   }
 }
 

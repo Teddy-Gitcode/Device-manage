@@ -93,6 +93,7 @@ class Printer(models.Model):
         help_text="Lowest supply/toner level from last poll (for SRE saturation)",
     )
     last_known_jam_total = models.IntegerField(null=True, blank=True, help_text="Cumulative jam count last seen (used to compute daily deltas)")
+    last_cover_was_open  = models.BooleanField(default=False, help_text="Whether cover/door was open on the previous poll (used to detect open transitions)")
 
     # Alerting state (SRE actionable alerting with cool-off)
     is_in_alert_state = models.BooleanField(default=False)
@@ -194,9 +195,10 @@ class PrinterDailyStat(models.Model):
     pages_printed_today = models.IntegerField(default=0, help_text="Pages printed this day")
 
     # Incidents
-    jam_count = models.IntegerField(default=0)
-    jams_today = models.IntegerField(default=0, help_text="Paper jams this day")
-    error_count = models.IntegerField(default=0)
+    jam_count        = models.IntegerField(default=0)
+    jams_today       = models.IntegerField(default=0, help_text="Paper jams this day")
+    cover_opens_today = models.IntegerField(default=0, help_text="Cover/door open events this day")
+    error_count      = models.IntegerField(default=0)
 
     # Time breakdown (minutes)
     uptime_minutes = models.IntegerField(default=0)

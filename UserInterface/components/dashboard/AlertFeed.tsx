@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import { usePrinterEventsCtx } from '@/components/providers/WebSocketProvider'
 import { levelToClass, formatRelativeTime } from '@/lib/utils'
@@ -39,7 +40,6 @@ export function AlertFeed({ limit }: { limit?: number }) {
             const LevelIcon = LEVEL_ICON[e.level] ?? IconInfo
             return (
               <motion.div
-                className="event"
                 key={e.id}
                 initial={{ opacity: 0, y: -6, height: 0 }}
                 animate={{ opacity: 1, y: 0,  height: 'auto' }}
@@ -47,13 +47,19 @@ export function AlertFeed({ limit }: { limit?: number }) {
                 transition={{ duration: 0.18, ease: 'easeOut' }}
                 style={{ overflow: 'hidden' }}
               >
-                <div className={'ei ' + levelToClass(e.level)}>
-                  <LevelIcon size={14} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div className="msg">{e.message}</div>
-                  <div className="src">{e.deviceName} · {formatRelativeTime(e.timestamp)}</div>
-                </div>
+                <Link
+                  href={`/devices/${e.deviceId}`}
+                  className="event"
+                  style={{ textDecoration: 'none', display: 'flex', cursor: 'pointer' }}
+                >
+                  <div className={'ei ' + levelToClass(e.level)}>
+                    <LevelIcon size={14} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div className="msg">{e.message}</div>
+                    <div className="src">{e.deviceName} · {formatRelativeTime(e.timestamp)}</div>
+                  </div>
+                </Link>
               </motion.div>
             )
           })}

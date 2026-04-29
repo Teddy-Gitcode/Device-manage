@@ -108,11 +108,13 @@ class ConsumableSerializer(serializers.ModelSerializer):
 class PrinterSerializer(serializers.ModelSerializer):
     """Serializer for Printer with nested latest supply levels and today's stats (read-only)."""
 
-    latest_supply_levels = serializers.SerializerMethodField(read_only=True)
-    consumables = ConsumableSerializer(many=True, read_only=True)
-    today_stats = serializers.SerializerMethodField(read_only=True)
-    health_score = serializers.SerializerMethodField(read_only=True)
+    latest_supply_levels   = serializers.SerializerMethodField(read_only=True)
+    consumables            = ConsumableSerializer(many=True, read_only=True)
+    today_stats            = serializers.SerializerMethodField(read_only=True)
+    health_score           = serializers.SerializerMethodField(read_only=True)
     predicted_service_info = serializers.SerializerMethodField(read_only=True)
+    active_alerts_current  = serializers.SerializerMethodField(read_only=True)
+    page_stats             = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Printer
@@ -147,6 +149,8 @@ class PrinterSerializer(serializers.ModelSerializer):
             "today_stats",
             "health_score",
             "predicted_service_info",
+            "active_alerts_current",
+            "page_stats",
         ]
 
     def get_latest_supply_levels(self, obj):
@@ -165,6 +169,51 @@ class PrinterSerializer(serializers.ModelSerializer):
         if not last_log:
             return []
         return SupplyLevelSerializer(last_log.supplies.all(), many=True).data
+
+    def get_active_alerts_current(self, obj):
+        """Return active_alerts from the most recent poll (latest log entry)."""
+        last_log = obj.logs.order_by("-timestamp").first()
+        if not last_log:
+            return []
+        return last_log.active_alerts or []
+
+    def get_page_stats(self, obj):
+        """Aggregate page counts: today, this week, this month, last month, plus daily breakdown."""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        today            = timezone.now().date()
+        week_start       = today - timedelta(days=today.weekday())          # Monday
+        month_start      = today.replace(day=1)
+        last_month_end   = month_start - timedelta(days=1)
+        last_month_start = last_month_end.replace(day=1)
+        thirty_days_ago  = today - timedelta(days=29)
+
+        stats = list(
+            obj.daily_stats
+            .filter(date__gte=last_month_start)
+            .order_by("date")
+            .values("date", "pages_printed_today")
+        )
+
+        def _sum(from_date, to_date):
+            return sum(
+                s["pages_printed_today"] for s in stats
+                if from_date <= s["date"] <= to_date
+            )
+
+        daily_30 = [
+            {"date": str(s["date"]), "pages": s["pages_printed_today"]}
+            for s in stats if s["date"] >= thirty_days_ago
+        ]
+
+        return {
+            "today":      _sum(today, today),
+            "this_week":  _sum(week_start, today),
+            "this_month": _sum(month_start, today),
+            "last_month": _sum(last_month_start, last_month_end),
+            "daily":      daily_30,
+        }
 
     def get_today_stats(self, obj):
         """Return today's PrinterDailyStat for deep analytics (uses prefetched today_stats_list)."""
@@ -248,6 +297,7 @@ class PrinterSerializer(serializers.ModelSerializer):
             "drum_pages_remaining": None,
             "jam_rate_30d": None,
             "total_jams_30d": 0,
+            "total_cover_opens_30d": 0,
         }
 
         # Drum / fuser predictions
@@ -272,7 +322,8 @@ class PrinterSerializer(serializers.ModelSerializer):
         stats = list(obj.daily_stats.filter(date__gte=thirty_days_ago))
         total_jams = sum(s.jams_today for s in stats)
         total_pages = sum(s.pages_printed_today for s in stats)
-        info["total_jams_30d"] = total_jams
+        info["total_jams_30d"]        = total_jams
+        info["total_cover_opens_30d"] = sum(s.cover_opens_today for s in stats)
         if total_pages > 0:
             info["jam_rate_30d"] = round((total_jams / total_pages) * 1000, 2)
         if total_jams > 10 and not info["next_service_reason"]:

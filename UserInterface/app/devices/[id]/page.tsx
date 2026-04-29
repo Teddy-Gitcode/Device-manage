@@ -6,11 +6,20 @@ import {
   IconAlertCircle, IconAlert, IconInfo, IconCheckCircle,
 } from '@/components/ui/Icons'
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
+import { AutoRefresh }   from '@/components/ui/AutoRefresh'
 import { api }            from '@/lib/api'
 import { normalizeDevice } from '@/lib/normalize'
 import type { DeviceStatus, TonerAlert } from '@/lib/types'
 
 // ── Inline types for raw backend shapes ────────────────────────────────────
+
+interface PageStats {
+  today:      number
+  this_week:  number
+  this_month: number
+  last_month: number
+  daily:      { date: string; pages: number }[]
+}
 
 interface BackendLog {
   id:              number
@@ -113,6 +122,36 @@ const LEVEL_ICON: Record<string, React.ElementType> = {
   info:   IconInfo,
 }
 
+function buildChartPoints(daily: { date: string; pages: number }[], last = 7) {
+  const slice = daily.slice(-last)
+  if (slice.length < 2) return { line: '', area: '', labels: [] as string[] }
+  const max = Math.max(...slice.map(d => d.pages), 1)
+  const pts = slice.map((d, i) => {
+    const x = (i / (slice.length - 1)) * 480
+    const y = 10 + (1 - d.pages / max) * 90   // y: 10 (top) → 100 (bottom)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  return {
+    line:   pts.join(' '),
+    area:   [...pts, '480,110', '0,110'].join(' '),
+    labels: slice.map(d => {
+      const dt = new Date(d.date)
+      return dt.toLocaleDateString('en-GB', { weekday: 'short' })
+    }),
+  }
+}
+
+function VolRow({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--neutral-stroke-divider)' }}>
+      <span style={{ fontSize: 13, color: 'var(--neutral-fg-2)' }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: highlight ? 'var(--m365-brand)' : 'var(--neutral-fg-1)' }}>
+        {value.toLocaleString()} pp
+      </span>
+    </div>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default async function DevicePage({ params }: { params: { id: string } }) {
@@ -124,13 +163,18 @@ export default async function DevicePage({ params }: { params: { id: string } })
   if (!rawPrinter) notFound()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const device = normalizeDevice(rawPrinter as any)
-  const logs   = (rawLogs as BackendLog[]).slice(0, 60)
+  const device    = normalizeDevice(rawPrinter as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pageStats = ((rawPrinter as any).page_stats ?? null) as PageStats | null
+  const logs      = (rawLogs as BackendLog[]).slice(0, 60)
 
   const tonerKeys = device.mono ? (['K'] as const) : TONER_KEYS
 
   return (
     <div className="page-fade">
+      {/* Silently re-fetches server data every 30 s (matches poll interval) */}
+      <AutoRefresh seconds={30} />
+
       {/* Breadcrumb */}
       <div className="breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         Monitor
@@ -139,6 +183,25 @@ export default async function DevicePage({ params }: { params: { id: string } })
         <IconChevronRight size={10} />
         {device.name}
       </div>
+
+      {/* Active alert banner — shown when the latest log has active alerts */}
+      {logs.length > 0 && (logs[0].active_alerts ?? []).length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          padding: '12px 16px', marginBottom: 14, borderRadius: 'var(--radius-card)',
+          background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)',
+        }}>
+          <IconAlertCircle size={16} style={{ color: 'var(--status-danger-fg)', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--status-danger-fg)', marginBottom: 3 }}>
+              Active alerts
+            </div>
+            {logs[0].active_alerts!.map((msg, i) => (
+              <div key={i} style={{ fontSize: 12, color: 'var(--status-danger-fg)', marginTop: 2 }}>{msg}</div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Hero card */}
       <div className="card" style={{ padding: '20px 24px', marginBottom: 16 }}>
@@ -199,9 +262,14 @@ export default async function DevicePage({ params }: { params: { id: string } })
           <div className="kpi-sub">out of 100</div>
         </div>
         <div className="card kpi">
-          <div className="kpi-label">Pages (30d)</div>
-          <div className="kpi-num"><AnimatedNumber value={device.pages30d} /></div>
-          <div className="kpi-sub">total printed</div>
+          <div className="kpi-label">Pages today</div>
+          <div className="kpi-num"><AnimatedNumber value={pageStats?.today ?? 0} /></div>
+          <div className="kpi-sub">printed so far</div>
+        </div>
+        <div className="card kpi">
+          <div className="kpi-label">This month</div>
+          <div className="kpi-num"><AnimatedNumber value={pageStats?.this_month ?? device.pages30d} /></div>
+          <div className="kpi-sub">pages printed</div>
         </div>
         <div className="card kpi">
           <div className="kpi-label">Utilization</div>
@@ -214,6 +282,13 @@ export default async function DevicePage({ params }: { params: { id: string } })
             <AnimatedNumber value={device.jams30d} />
           </div>
           <div className="kpi-sub">paper jams recorded</div>
+        </div>
+        <div className="card kpi">
+          <div className="kpi-label">Cover opens (30d)</div>
+          <div className="kpi-num" style={{ color: device.coverOpens30d > 3 ? 'var(--status-warning-fg)' : 'inherit' }}>
+            <AnimatedNumber value={device.coverOpens30d} />
+          </div>
+          <div className="kpi-sub">door / cover events</div>
         </div>
       </div>
 
@@ -310,35 +385,54 @@ export default async function DevicePage({ params }: { params: { id: string } })
         {/* Right column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Activity chart */}
-          <div className="card" style={{ padding: '16px 20px' }}>
-            <div className="card-head" style={{ marginBottom: 10 }}>
-              <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <IconActivity size={14} /> Activity · last 7 days
+          {/* Activity chart — last 7 days real data */}
+          {(() => {
+            const chart = buildChartPoints(pageStats?.daily ?? [], 7)
+            const hasData = chart.line.length > 0
+            return (
+              <div className="card" style={{ padding: '16px 20px' }}>
+                <div className="card-head" style={{ marginBottom: 10 }}>
+                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <IconActivity size={14} /> Activity · last 7 days
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>pages per day</span>
+                </div>
+                {hasData ? (
+                  <>
+                    <svg width="100%" height="110" viewBox="0 0 480 110" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--m365-brand)" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="var(--m365-brand)" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <polyline points={chart.line} fill="none" stroke="var(--m365-brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <polygon  points={chart.area} fill="url(#areaGrad)" />
+                    </svg>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                      {chart.labels.map((l, i) => (
+                        <span key={i} style={{ fontSize: 10, color: 'var(--neutral-fg-3)' }}>{l}</span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 13, color: 'var(--neutral-fg-3)', padding: '16px 0' }}>No activity data yet.</p>
+                )}
               </div>
-              <span style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>pages per day</span>
+            )
+          })()}
+
+          {/* Print volume breakdown */}
+          <div className="card" style={{ padding: '16px 20px' }}>
+            <div className="card-head" style={{ marginBottom: 4 }}>
+              <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <IconActivity size={14} /> Print volume
+              </div>
             </div>
-            <svg width="100%" height="110" viewBox="0 0 480 110" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--m365-brand)" stopOpacity="0.18" />
-                  <stop offset="100%" stopColor="var(--m365-brand)" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <polyline
-                points="0,80 68,65 136,72 204,45 272,58 342,32 410,40 480,24"
-                fill="none" stroke="var(--m365-brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              />
-              <polygon
-                points="0,80 68,65 136,72 204,45 272,58 342,32 410,40 480,24 480,110 0,110"
-                fill="url(#areaGrad)"
-              />
-            </svg>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                <span key={d} style={{ fontSize: 10, color: 'var(--neutral-fg-3)' }}>{d}</span>
-              ))}
-            </div>
+            <VolRow label="Today"      value={pageStats?.today      ?? 0} highlight />
+            <VolRow label="This week"  value={pageStats?.this_week  ?? 0} />
+            <VolRow label="This month" value={pageStats?.this_month ?? 0} />
+            <VolRow label="Last month" value={pageStats?.last_month ?? 0} />
           </div>
 
           {/* Recent events */}
@@ -355,6 +449,7 @@ export default async function DevicePage({ params }: { params: { id: string } })
               logs.slice(0, 8).map((log, i) => {
                 const level = eventTypeToLevel(log.event_type)
                 const LIcon = LEVEL_ICON[level] ?? IconInfo
+                const alerts = log.active_alerts ?? []
                 return (
                   <div
                     key={log.id}
@@ -371,6 +466,16 @@ export default async function DevicePage({ params }: { params: { id: string } })
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{eventTypeLabel(log.event_type)}</div>
+                      {alerts.length > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--status-danger-fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {alerts[0]}
+                        </div>
+                      )}
+                      {!alerts.length && log.console_display && (
+                        <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {log.console_display}
+                        </div>
+                      )}
                       <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginTop: 2 }}>
                         {new Date(log.timestamp).toLocaleString()} · {log.total_pages?.toLocaleString() ?? '—'} pp
                       </div>
@@ -403,13 +508,22 @@ export default async function DevicePage({ params }: { params: { id: string } })
               </thead>
               <tbody>
                 {logs.map(log => {
-                  const level = eventTypeToLevel(log.event_type)
+                  const level  = eventTypeToLevel(log.event_type)
+                  const alerts = log.active_alerts ?? []
                   return (
                     <tr key={log.id} style={{ cursor: 'default' }}>
                       <td style={{ color: 'var(--neutral-fg-3)', fontVariantNumeric: 'tabular-nums', fontSize: 11, whiteSpace: 'nowrap' }}>
                         {new Date(log.timestamp).toLocaleString()}
                       </td>
-                      <td style={{ fontWeight: 500 }}>{eventTypeLabel(log.event_type)}</td>
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{eventTypeLabel(log.event_type)}</div>
+                        {alerts.length > 0 && (
+                          <div style={{ fontSize: 11, color: 'var(--status-danger-fg)', marginTop: 2 }}>{alerts[0]}</div>
+                        )}
+                        {!alerts.length && log.console_display && (
+                          <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginTop: 2 }}>{log.console_display}</div>
+                        )}
+                      </td>
                       <td style={{ color: 'var(--neutral-fg-2)' }}>{log.status || '—'}</td>
                       <td>
                         <span className={'badge ' + level}>

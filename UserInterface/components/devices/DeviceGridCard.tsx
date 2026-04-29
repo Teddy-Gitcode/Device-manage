@@ -65,6 +65,12 @@ export function DeviceGridCard({ device, onSelect, index = 0 }: Props) {
           <span className={'badge ' + status}>
             <span className="dot" />{STATUS_LABELS[status]}
           </span>
+          {device.activeAlerts.length > 0 && (
+            <span className="badge danger" title={device.activeAlerts[0]}>
+              <span className="dot" />
+              {device.activeAlerts[0].toLowerCase().includes('cover') ? 'Cover Open' : 'Paper Jam'}
+            </span>
+          )}
           {tonerLabel && (
             <span className={'badge ' + TONER_ALERT_CLASS[device.tonerAlert]}>
               <span className="dot" />{tonerLabel}

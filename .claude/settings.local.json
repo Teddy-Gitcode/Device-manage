@@ -63,7 +63,10 @@
       "Bash(awk '{print $5}')",
       "Bash(taskkill /PID 1816 /F)",
       "Bash(taskkill /PID 35972 /F)",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('count:', d.get\\('count'\\)\\); [print\\(p['id'], p['name'], p.get\\('latest_supply_levels', []\\)\\) for p in d['results'][:3]]\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('count:', d.get\\('count'\\)\\); [print\\(p['id'], p['name'], p.get\\('latest_supply_levels', []\\)\\) for p in d['results'][:3]]\")",
+      "Bash(findstr \":3000\")",
+      "Bash(tasklist /FI \"PID eq 28896\")",
+      "Bash(tasklist /FI \"PID eq 26052\")"
     ]
   }
 }
