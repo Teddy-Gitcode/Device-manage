@@ -1,10 +1,14 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { DeviceTable }       from '@/components/dashboard/DeviceTable'
 import { DeviceGridCard }    from '@/components/devices/DeviceGridCard'
 import { DeviceDetailPanel } from '@/components/detail/DeviceDetailPanel'
-import { IconList, IconGrid, IconSearch } from '@/components/ui/Icons'
+import { EditDeviceModal }   from '@/components/devices/EditDeviceModal'
+import { IconList, IconGrid, IconSearch, IconCheck, IconX } from '@/components/ui/Icons'
 import type { Device } from '@/lib/types'
+
+type Toast = { msg: string; ok: boolean } | null
 
 type View   = 'list' | 'grid'
 type Filter = 'all' | 'ok' | 'warn' | 'danger' | 'toner_low' | 'toner_empty'
@@ -21,10 +25,19 @@ const FILTER_LABELS: Record<Filter, string> = {
 const FILTER_ORDER: Filter[] = ['all', 'ok', 'warn', 'danger', 'toner_low', 'toner_empty']
 
 export function DevicesClient({ devices }: { devices: Device[] }) {
+  const router = useRouter()
+
   const [selected, setSelected] = useState<Device | null>(null)
+  const [editing,  setEditing]  = useState<Device | null>(null)
   const [query,    setQuery]    = useState('')
   const [filter,   setFilter]   = useState<Filter>('all')
   const [view,     setView]     = useState<View>('list')
+  const [toast,    setToast]    = useState<Toast>(null)
+
+  function showToast(msg: string, ok: boolean) {
+    setToast({ msg, ok })
+    setTimeout(() => setToast(null), 3500)
+  }
 
   const counts: Record<Filter, number> = {
     all:         devices.length,
@@ -109,7 +122,7 @@ export function DevicesClient({ devices }: { devices: Device[] }) {
 
       {/* List view */}
       {view === 'list' && (
-        <DeviceTable devices={filtered} onSelect={setSelected} />
+        <DeviceTable devices={filtered} onSelect={setSelected} onEdit={setEditing} />
       )}
 
       {/* Grid view */}
@@ -121,7 +134,7 @@ export function DevicesClient({ devices }: { devices: Device[] }) {
         ) : (
           <div className="device-grid">
             {filtered.map((d, i) => (
-              <DeviceGridCard key={d.id} device={d} onSelect={setSelected} index={i} />
+              <DeviceGridCard key={d.id} device={d} onSelect={setSelected} onEdit={setEditing} index={i} />
             ))}
           </div>
         )
@@ -129,6 +142,31 @@ export function DevicesClient({ devices }: { devices: Device[] }) {
 
       {/* Quick-view panel */}
       <DeviceDetailPanel device={selected} onClose={() => setSelected(null)} />
+
+      {/* Edit modal */}
+      {editing && (
+        <EditDeviceModal
+          device={editing}
+          onClose={() => setEditing(null)}
+          onSuccess={label => {
+            showToast(`"${label}" updated`, true)
+            setEditing(null)
+            router.refresh()
+          }}
+          onDeleted={() => {
+            showToast('Device deleted', true)
+            setEditing(null)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {toast && (
+        <div className={'action-toast' + (toast.ok ? '' : ' error')}>
+          {toast.ok ? <IconCheck size={13} /> : <IconX size={13} />}
+          {toast.msg}
+        </div>
+      )}
     </>
   )
 }

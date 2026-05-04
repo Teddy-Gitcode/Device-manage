@@ -187,25 +187,62 @@ export function DeviceDetailPanel({ device, onClose }: { device: Device | null; 
                         )
                       })}
 
-                      <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 500, marginTop: 16, marginBottom: 8 }}>
-                        Paper
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ width: 18, fontSize: 11, fontWeight: 600 }}>P</span>
-                        <div style={{ flex: 1, height: 6, background: 'var(--neutral-bg-3)', borderRadius: 3, overflow: 'hidden' }}>
-                          <div
-                            className="bar-fill"
-                            style={{
-                              width: `${d.paper}%`,
-                              background: 'var(--neutral-fg-3)',
-                              animationDelay: '0.32s',
-                            }}
-                          />
-                        </div>
-                        <span style={{ width: 40, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
-                          {d.paper}%
-                        </span>
-                      </div>
+                      {d.paper !== null && (
+                        <>
+                          <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 500, marginTop: 16, marginBottom: 8 }}>
+                            Paper
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ width: 18, fontSize: 11, fontWeight: 600 }}>P</span>
+                            <div style={{ flex: 1, height: 6, background: 'var(--neutral-bg-3)', borderRadius: 3, overflow: 'hidden' }}>
+                              <div
+                                className="bar-fill"
+                                style={{
+                                  width: `${d.paper}%`,
+                                  background: d.paper < 20 ? 'var(--status-danger-fg)' : 'var(--neutral-fg-3)',
+                                  animationDelay: '0.32s',
+                                }}
+                              />
+                            </div>
+                            <span style={{ width: 40, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+                              {d.paper}%
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      {d.hasWasteToner && (
+                        <>
+                          <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 500, marginTop: 16, marginBottom: 8 }}>
+                            Waste Toner
+                          </div>
+                          {d.wasteToner === null ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ width: 18, fontSize: 10, fontWeight: 600 }}>WT</span>
+                              <div style={{ flex: 1, height: 6, background: 'var(--neutral-bg-3)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div className="bar-fill" style={{ width: '100%', background: 'var(--status-success-fg)', animationDelay: '0.32s' }} />
+                              </div>
+                              <span style={{ width: 40, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--status-success-fg)', fontWeight: 600 }}>OK</span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ width: 18, fontSize: 10, fontWeight: 600 }}>WT</span>
+                              <div style={{ flex: 1, height: 6, background: 'var(--neutral-bg-3)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div
+                                  className="bar-fill"
+                                  style={{
+                                    width: `${d.wasteToner}%`,
+                                    background: d.wasteToner > 90 ? 'var(--status-danger-fg)' : d.wasteToner > 70 ? 'var(--status-warning-fg)' : 'var(--neutral-fg-3)',
+                                    animationDelay: '0.32s',
+                                  }}
+                                />
+                              </div>
+                              <span style={{ width: 40, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', color: d.wasteToner > 70 ? 'var(--status-warning-fg)' : undefined }}>
+                                {d.wasteToner}% full
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
 

@@ -1,14 +1,15 @@
 import Link         from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  IconChevronRight, IconPrinter, IconRefresh,
+  IconChevronRight, IconPrinter,
   IconDroplet, IconCpu, IconActivity, IconWrench,
   IconAlertCircle, IconAlert, IconInfo, IconCheckCircle,
 } from '@/components/ui/Icons'
-import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
-import { AutoRefresh }   from '@/components/ui/AutoRefresh'
-import { api }            from '@/lib/api'
-import { normalizeDevice } from '@/lib/normalize'
+import { AnimatedNumber }       from '@/components/ui/AnimatedNumber'
+import { AutoRefresh }          from '@/components/ui/AutoRefresh'
+import { DeviceDetailActions }  from '@/components/devices/DeviceDetailActions'
+import { api }                  from '@/lib/api'
+import { normalizeDevice }      from '@/lib/normalize'
 import type { DeviceStatus, TonerAlert } from '@/lib/types'
 
 // ── Inline types for raw backend shapes ────────────────────────────────────
@@ -227,7 +228,7 @@ export default async function DevicePage({ params }: { params: { id: string } })
             </div>
           </div>
 
-          {/* Right: status + actions */}
+          {/* Right: status badges + actions */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 10 }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <span className={'badge ' + device.status} style={{ fontSize: 12 }}>
@@ -239,17 +240,7 @@ export default async function DevicePage({ params }: { params: { id: string } })
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn secondary small" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <IconRefresh size={13} /> Poll now
-              </button>
-              <button className="btn secondary small" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <IconDroplet size={13} /> Order toner
-              </button>
-              <button className="btn primary small" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <IconWrench size={13} /> Schedule service
-              </button>
-            </div>
+            <DeviceDetailActions device={device} />
           </div>
         </div>
       </div>
@@ -338,25 +329,62 @@ export default async function DevicePage({ params }: { params: { id: string } })
               )
             })}
 
-            <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', textTransform: 'uppercase', letterSpacing: '.05em', fontWeight: 500, margin: '14px 0 6px' }}>
-              Paper
-            </div>
-            <div className="detail-toner-row">
-              <span className="label">P</span>
-              <div className="track">
-                <div
-                  className="bar-fill"
-                  style={{
-                    width: `${device.paper}%`,
-                    background: device.paper < 20 ? 'var(--status-danger-fg)' : 'var(--neutral-fg-3)',
-                    animationDelay: '0.36s',
-                  }}
-                />
-              </div>
-              <span style={{ width: 38, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                {device.paper}%
-              </span>
-            </div>
+            {device.paper !== null && (
+              <>
+                <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', textTransform: 'uppercase', letterSpacing: '.05em', fontWeight: 500, margin: '14px 0 6px' }}>
+                  Paper
+                </div>
+                <div className="detail-toner-row">
+                  <span className="label">P</span>
+                  <div className="track">
+                    <div
+                      className="bar-fill"
+                      style={{
+                        width: `${device.paper}%`,
+                        background: device.paper < 20 ? 'var(--status-danger-fg)' : 'var(--neutral-fg-3)',
+                        animationDelay: '0.36s',
+                      }}
+                    />
+                  </div>
+                  <span style={{ width: 38, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                    {device.paper}%
+                  </span>
+                </div>
+              </>
+            )}
+            {device.hasWasteToner && (
+              <>
+                <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', textTransform: 'uppercase', letterSpacing: '.05em', fontWeight: 500, margin: '14px 0 6px' }}>
+                  Waste Toner
+                </div>
+                {device.wasteToner === null ? (
+                  <div className="detail-toner-row">
+                    <span className="label" style={{ fontSize: 9 }}>WT</span>
+                    <div className="track">
+                      <div className="bar-fill" style={{ width: '100%', background: 'var(--status-success-fg)', animationDelay: '0.36s' }} />
+                    </div>
+                    <span style={{ width: 38, textAlign: 'right', fontSize: 12, fontWeight: 600, color: 'var(--status-success-fg)' }}>OK</span>
+                  </div>
+                ) : (
+                  <div className="detail-toner-row">
+                    <span className="label" style={{ fontSize: 9 }}>WT</span>
+                    <div className="track">
+                      <div
+                        className="bar-fill"
+                        style={{
+                          width: `${device.wasteToner}%`,
+                          background: device.wasteToner > 90 ? 'var(--status-danger-fg)' : device.wasteToner > 70 ? 'var(--status-warning-fg)' : 'var(--neutral-fg-3)',
+                          animationDelay: '0.36s',
+                        }}
+                      />
+                    </div>
+                    <span style={{ width: 38, textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: device.wasteToner > 70 ? 'var(--status-warning-fg)' : undefined }}>
+                      {device.wasteToner}% full
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Specifications card */}

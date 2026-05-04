@@ -1,5 +1,6 @@
 'use client'
 import { useDeviceStatus } from '@/hooks/useDeviceStatus'
+import { IconEdit } from '@/components/ui/Icons'
 import type { Device, DeviceStatus, TonerAlert } from '@/lib/types'
 
 const STATUS_LABELS: Record<DeviceStatus, string> = {
@@ -51,7 +52,7 @@ function TonerBars({ values, names, mono }: {
   )
 }
 
-export function DeviceRow({ device, onSelect }: { device: Device; onSelect: (d: Device) => void }) {
+export function DeviceRow({ device, onSelect, onEdit }: { device: Device; onSelect: (d: Device) => void; onEdit?: (d: Device) => void }) {
   const liveStatuses = useDeviceStatus()
   const status = liveStatuses.get(device.id) ?? device.status
 
@@ -97,6 +98,18 @@ export function DeviceRow({ device, onSelect }: { device: Device; onSelect: (d: 
         <span className={'chip ' + device.recommendation}>
           {device.recommendation[0].toUpperCase() + device.recommendation.slice(1)}
         </span>
+      </td>
+      <td style={{ textAlign: 'right' }}>
+        {onEdit && (
+          <button
+            className="btn subtle small"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}
+            onClick={e => { e.stopPropagation(); onEdit(device) }}
+            title="Edit device"
+          >
+            <IconEdit size={12} /> Edit
+          </button>
+        )}
       </td>
     </tr>
   )

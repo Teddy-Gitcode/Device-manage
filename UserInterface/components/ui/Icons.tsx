@@ -49,4 +49,7 @@ export {
   ArrowRight       as IconArrowRight,
   PauseCircle      as IconPauseCircle,
   Menu             as IconMenu,
+  Pencil           as IconEdit,
+  Trash2           as IconTrash,
+  Save             as IconSave,
 } from 'lucide-react'

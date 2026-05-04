@@ -1,49 +1,63 @@
-import { Sparkline }       from '@/components/ui/Sparkline'
-import { AnimatedNumber }  from '@/components/ui/AnimatedNumber'
-import { deriveKpis }      from '@/lib/utils'
-import type { Device }     from '@/lib/types'
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
+import { deriveKpis }     from '@/lib/utils'
+import type { Device }    from '@/lib/types'
+
+function Tile({
+  label, value, sub, accent, icon,
+}: {
+  label: string
+  value: React.ReactNode
+  sub?: string
+  accent?: string
+  icon?: string
+}) {
+  return (
+    <div className="card kpi" style={{ borderTop: accent ? `3px solid ${accent}` : undefined }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="kpi-label">{label}</div>
+        {icon && <span style={{ fontSize: 18 }}>{icon}</span>}
+      </div>
+      <div className="kpi-num" style={{ color: accent ?? 'inherit' }}>{value}</div>
+      {sub && <div className="kpi-sub">{sub}</div>}
+    </div>
+  )
+}
 
 export function KpiTiles({ devices }: { devices: Device[] }) {
-  const { active, total, pages, avgUtil, alerts } = deriveKpis(devices)
+  const { online, total, offline, withAlerts, lowToner, pagesToday } = deriveKpis(devices)
 
   return (
-    <div className="kpi-grid">
-      <div className="card kpi">
-        <div className="kpi-label">Active devices</div>
-        <div className="kpi-num">
-          <AnimatedNumber value={active} />
-          <span style={{ fontSize: 16, color: 'var(--neutral-fg-3)', fontWeight: 500 }}>
-            {' '}/ {total}
-          </span>
-        </div>
-        <Sparkline points={[22, 24, 23, 25, 24, 26, active]} />
-      </div>
-
-      <div className="card kpi">
-        <div className="kpi-label">Pages (30d)</div>
-        <div className="kpi-num">
-          {pages > 0
-            ? <AnimatedNumber value={Math.round(pages / 1000)} suffix="k" />
-            : '—'}
-        </div>
-        <Sparkline points={[110, 120, 128, 135, 142, 150, Math.max(pages / 1000, 1)]} />
-      </div>
-
-      <div className="card kpi">
-        <div className="kpi-label">Avg utilization</div>
-        <div className="kpi-num">
-          <AnimatedNumber value={avgUtil} suffix="%" />
-        </div>
-        <Sparkline points={[62, 65, 61, 64, 67, 63, avgUtil]} />
-      </div>
-
-      <div className="card kpi">
-        <div className="kpi-label">Open alerts</div>
-        <div className="kpi-num" style={{ color: alerts > 0 ? 'var(--status-danger-fg)' : 'inherit' }}>
-          <AnimatedNumber value={alerts} />
-        </div>
-        <Sparkline points={[1, 2, 2, 3, 4, 5, alerts]} color="var(--status-danger-fg)" />
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+      <Tile
+        label="Online"
+        value={<><AnimatedNumber value={online} /><span style={{ fontSize: 16, color: 'var(--neutral-fg-3)', fontWeight: 500 }}> / {total}</span></>}
+        sub="devices reachable"
+        accent={offline > 0 ? undefined : 'var(--status-success-fg)'}
+      />
+      <Tile
+        label="Offline"
+        value={<AnimatedNumber value={offline} />}
+        sub={offline === 0 ? 'all devices up' : `device${offline !== 1 ? 's' : ''} unreachable`}
+        accent={offline > 0 ? 'var(--status-danger-fg)' : undefined}
+      />
+      <Tile
+        label="Active alerts"
+        value={<AnimatedNumber value={withAlerts} />}
+        sub={withAlerts === 0 ? 'no active issues' : `device${withAlerts !== 1 ? 's' : ''} need attention`}
+        accent={withAlerts > 0 ? 'var(--status-danger-fg)' : undefined}
+      />
+      <Tile
+        label="Low toner"
+        value={<AnimatedNumber value={lowToner} />}
+        sub={lowToner === 0 ? 'toner levels OK' : `device${lowToner !== 1 ? 's' : ''} need cartridges`}
+        accent={lowToner > 0 ? 'var(--status-warning-fg)' : undefined}
+      />
+      <Tile
+        label="Pages today"
+        value={pagesToday > 0 ? <AnimatedNumber value={pagesToday} /> : '—'}
+        sub="printed across fleet"
+        accent="var(--m365-brand)"
+      />
     </div>
   )
 }

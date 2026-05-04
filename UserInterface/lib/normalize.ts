@@ -76,10 +76,12 @@ interface BackendConsumableAlert {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function deriveStatus(health: number, _currentStatus: number): DeviceStatus {
-  if (health === 5) return 'danger'  // Down → Offline
-  if (health === 3) return 'warn'    // Warning
-  return 'ok'                        // Running → Online (sleep/idle/printing are all online)
+function deriveStatus(health: number, _currentStatus: number, activeAlerts: string[]): DeviceStatus {
+  if (health === 5) return 'danger'
+  // Only surface SNMP health=3 as a visible warning when there are actual named alerts.
+  // Kyocera printers often report health=3 with no specific alerts (sleeping / idle state).
+  if (health === 3 && activeAlerts.length > 0) return 'warn'
+  return 'ok'
 }
 
 function extractToner(supplies: BackendSupplyLevel[]): [number, number, number, number] {
@@ -116,7 +118,25 @@ function isMono(supplies: BackendSupplyLevel[]): boolean {
   return toners.length <= 1
 }
 
-function deriveTonerAlert(consumables: BackendConsumableAlert[], minPct: number | null): TonerAlert {
+function deriveTonerAlert(
+  consumables: BackendConsumableAlert[],
+  minPct: number | null,
+  supplies: BackendSupplyLevel[],
+): TonerAlert {
+  // Use live SNMP supply levels as the primary source — they reflect the actual toner installed.
+  // Consumable DB records can be stale (e.g., a ghost empty record from a previous cartridge).
+  const namedToners = supplies.filter(s =>
+    (s.category === 'Toner' || s.category === 'toner' || s.category === 'TONER') &&
+    s.name && s.name.trim() !== '',
+  )
+  if (namedToners.length > 0) {
+    const minLevel = Math.min(...namedToners.map(s => s.level_percent))
+    if (minLevel <= 5)  return 'empty'
+    if (minLevel < 20)  return 'low'
+    return 'none'
+  }
+
+  // Fallback: consumable flags when no named supply level data is available
   const toners = consumables.filter(c => c.category === 'TONER')
   if (toners.some(c => c.is_empty || c.status === 'EMPTY' || c.status === 'CRITICAL')) return 'empty'
   if (toners.some(c => c.is_low) || (minPct !== null && minPct < 20)) return 'low'
@@ -146,18 +166,29 @@ export function normalizeDevice(d: BackendPrinter): Device {
   const mono       = isMono(d.latest_supply_levels)
 
   const paperSupply = d.latest_supply_levels.find(s =>
-    s.category === 'Paper' || s.name.toLowerCase().includes('paper')
+    (s.category === 'Paper' || s.name.toLowerCase().includes('paper')) &&
+    !s.name.toLowerCase().includes('waste'),
+  )
+  const wasteToneSupply = d.latest_supply_levels.find(s =>
+    s.category === 'Waste Bin' || s.category === 'WASTE_TONER' ||
+    (s.name.toLowerCase().includes('waste') && s.name.toLowerCase().includes('toner')),
   )
 
   return {
     id:             String(d.id),
     name:           d.name,
     location:       d.location ?? '',
-    status:         deriveStatus(d.device_health, d.current_status),
-    tonerAlert:     deriveTonerAlert(d.consumables ?? [], d.min_supply_percent),
+    status:         deriveStatus(d.device_health, d.current_status, d.active_alerts_current ?? []),
+    tonerAlert:     deriveTonerAlert(d.consumables ?? [], d.min_supply_percent, d.latest_supply_levels),
     toner,
     tonerNames,
-    paper:          paperSupply?.level_percent ?? 100,
+    paper:          paperSupply?.level_percent ?? null,
+    hasWasteToner:  !!wasteToneSupply,
+    // Only trust the level when SNMP reports real capacity (max_capacity > 0).
+    // Kyocera returns sentinels -2/-3 meaning "not measurable"; computed level_percent is garbage.
+    wasteToner:     (wasteToneSupply && wasteToneSupply.max_capacity > 0)
+                      ? wasteToneSupply.level_percent
+                      : null,
     utilization:    util,
     recommendation: deriveRecommendation(d.health_score, util),
     ip:             d.ip_address,
@@ -170,6 +201,7 @@ export function normalizeDevice(d: BackendPrinter): Device {
     jams30d:        d.predicted_service_info?.total_jams_30d ?? d.today_stats?.jams_today ?? 0,
     coverOpens30d:  d.predicted_service_info?.total_cover_opens_30d ?? 0,
     pages30d:       d.page_stats?.this_month ?? 0,
+    pagesToday:     d.page_stats?.today ?? 0,
     costPerPage:    d.cost_per_page_mono ? `KES ${d.cost_per_page_mono}` : '—',
     monthlyDuty:    `${monthlyVol.toLocaleString()} pp/mo`,
     lifetimePages:  d.total_page_count ?? 0,

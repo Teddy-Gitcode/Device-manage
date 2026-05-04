@@ -14,8 +14,11 @@ export interface Device {
   tonerAlert:     TonerAlert
   toner:          [number, number, number, number]   // [K%, C%, M%, Y%] — 0 if N/A
   tonerNames:     [string, string, string, string]   // actual model codes e.g. "TK-5270K"
-  paper:          number
+  paper:          number | null   // null = no paper tray data from SNMP
+  hasWasteToner:  boolean         // waste toner box present (even if level not measurable)
+  wasteToner:     number | null   // fill %; null = box exists but SNMP can't measure level
   pages30d:       number
+  pagesToday:     number
   utilization:    number
   recommendation: Recommendation
   ip:             string

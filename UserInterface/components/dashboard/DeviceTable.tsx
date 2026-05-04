@@ -2,7 +2,7 @@ import { DeviceRow } from './DeviceRow'
 import { IconMore } from '@/components/ui/Icons'
 import type { Device } from '@/lib/types'
 
-export function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect: (d: Device) => void }) {
+export function DeviceTable({ devices, onSelect, onEdit }: { devices: Device[]; onSelect: (d: Device) => void; onEdit?: (d: Device) => void }) {
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div className="card-head" style={{ padding: '14px 16px', marginBottom: 0 }}>
@@ -24,11 +24,12 @@ export function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect
               <th>Util</th>
               <th style={{ textAlign: 'right' }}>Pages 30d</th>
               <th>Rec.</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {devices.map(d => (
-              <DeviceRow key={d.id} device={d} onSelect={onSelect} />
+              <DeviceRow key={d.id} device={d} onSelect={onSelect} onEdit={onEdit} />
             ))}
           </tbody>
         </table>

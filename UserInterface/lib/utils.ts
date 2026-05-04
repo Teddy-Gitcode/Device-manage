@@ -61,10 +61,18 @@ export function formatRelativeTime(iso: string): string {
 }
 
 export function deriveKpis(devices: Device[]) {
-  const total   = devices.length
-  const active  = devices.filter(d => d.status !== 'danger').length
+  const total      = devices.length
+  const online     = devices.filter(d => d.status !== 'danger').length
+  const offline    = devices.filter(d => d.status === 'danger').length
+  const withAlerts = devices.filter(d =>
+    d.activeAlerts.some(a => !a.toLowerCase().includes('sleep')),
+  ).length
+  const lowToner   = devices.filter(d => d.tonerAlert !== 'none').length
+  const pagesToday = devices.reduce((s, d) => s + d.pagesToday, 0)
+  // kept for any existing consumers
+  const active  = online
   const pages   = devices.reduce((s, d) => s + d.pages30d, 0)
   const avgUtil = total > 0 ? Math.round(devices.reduce((s, d) => s + d.utilization, 0) / total) : 0
-  const alerts  = devices.filter(d => d.status === 'danger' || d.status === 'warn').length
-  return { active, total, pages, avgUtil, alerts }
+  const alerts  = withAlerts
+  return { active, total, pages, avgUtil, alerts, online, offline, withAlerts, lowToner, pagesToday }
 }

@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useDeviceStatus } from '@/hooks/useDeviceStatus'
+import { IconEdit } from '@/components/ui/Icons'
 import type { Device, DeviceStatus, TonerAlert } from '@/lib/types'
 
 const STATUS_LABELS: Record<DeviceStatus, string> = {
@@ -28,10 +29,11 @@ const TONER_KEYS   = ['K', 'C', 'M', 'Y']
 interface Props {
   device:   Device
   onSelect: (d: Device) => void
+  onEdit?:  (d: Device) => void
   index?:   number
 }
 
-export function DeviceGridCard({ device, onSelect, index = 0 }: Props) {
+export function DeviceGridCard({ device, onSelect, onEdit, index = 0 }: Props) {
   const liveStatuses = useDeviceStatus()
   const status = liveStatuses.get(device.id) ?? device.status
 
@@ -117,21 +119,24 @@ export function DeviceGridCard({ device, onSelect, index = 0 }: Props) {
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+      {/* Footer — marginTop auto pins this to the bottom regardless of toner row count */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto', paddingTop: 4, borderTop: '1px solid var(--neutral-stroke-divider)' }}>
         <span className={'chip ' + device.recommendation} style={{ fontSize: 11 }}>
           {device.recommendation[0].toUpperCase() + device.recommendation.slice(1)}
         </span>
         <span style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginLeft: 'auto' }}>
           {device.pages30d.toLocaleString()} pp
         </span>
-        <button
-          className="btn subtle small"
-          onClick={e => { e.stopPropagation(); onSelect(device) }}
-          style={{ fontSize: 11, padding: '2px 8px' }}
-        >
-          Quick view
-        </button>
+        {onEdit && (
+          <button
+            className="btn subtle small"
+            onClick={e => { e.stopPropagation(); onEdit(device) }}
+            style={{ fontSize: 11, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            title="Edit device"
+          >
+            <IconEdit size={11} /> Edit
+          </button>
+        )}
         <Link
           href={`/devices/${device.id}`}
           className="btn secondary small"
