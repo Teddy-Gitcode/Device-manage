@@ -27,7 +27,7 @@ export function KpiTiles({ devices }: { devices: Device[] }) {
   const { online, total, offline, withAlerts, lowToner, pagesToday } = deriveKpis(devices)
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+    <div className="kpi-grid">
       <Tile
         label="Online"
         value={<><AnimatedNumber value={online} /><span style={{ fontSize: 16, color: 'var(--neutral-fg-3)', fontWeight: 500 }}> / {total}</span></>}

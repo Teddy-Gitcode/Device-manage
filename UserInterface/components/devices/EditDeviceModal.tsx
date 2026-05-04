@@ -170,7 +170,7 @@ export function EditDeviceModal({
       <div
         className="modal-box"
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}
+        style={{ maxWidth: 520, width: '100%' }}
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>

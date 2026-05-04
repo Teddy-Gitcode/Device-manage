@@ -228,20 +228,35 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
   font-size: 11px; font-weight: 600; flex-shrink: 0;
 }
 
-.main { display: grid; grid-template-columns: 240px 1fr; overflow: hidden; position: relative; }
+.main { display: flex; overflow: hidden; position: relative; }
 
-/* Hamburger — desktop hidden, mobile shown via media query */
-.menu-btn { display: none; }
+/* Hamburger — always visible, toggles sidebar on all breakpoints */
+.menu-btn { display: flex; }
 
 /* =========================================================
    Side nav
    ========================================================= */
 .sidenav {
+  width: 240px;
+  flex-shrink: 0;
   background: var(--neutral-bg-2);
   border-right: 1px solid var(--neutral-stroke-2);
   padding: 12px 0;
   overflow-y: auto;
   display: flex; flex-direction: column;
+  transition: width 0.22s cubic-bezier(0.33, 0, 0.67, 1),
+              padding 0.22s cubic-bezier(0.33, 0, 0.67, 1),
+              border-color 0.22s;
+}
+
+/* Desktop/tablet: collapsed sidebar — shrink to nothing */
+@media (min-width: 768px) {
+  .nav-closed .sidenav {
+    width: 0;
+    padding: 0;
+    border-right-color: transparent;
+    overflow: hidden;
+  }
 }
 .sidenav-inner { display: flex; flex-direction: column; height: 100%; }
 .nav-section { padding: 8px 16px 4px; font-size: 10px; color: var(--neutral-fg-3); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 500; }
@@ -264,7 +279,7 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
 /* =========================================================
    Content canvas
    ========================================================= */
-.canvas { padding: 24px 32px; overflow-y: auto; }
+.canvas { flex: 1; min-width: 0; padding: 24px 32px; overflow-y: auto; }
 .breadcrumb { font-size: 12px; color: var(--neutral-fg-3); display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .page-title { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
@@ -279,7 +294,7 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
 /* =========================================================
    KPI tiles
    ========================================================= */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
 .kpi { padding: 16px; }
 .kpi-label { font-size: 11px; color: var(--neutral-fg-3); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 500; }
 .kpi-num { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin-top: 6px; }
@@ -643,10 +658,11 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: 48px 20px 40px;
+  overflow-y: auto;
   animation: pageFade 0.15s ease-out;
 }
 .modal-box {
@@ -879,7 +895,6 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
 
 /* ── Tablet  768 – 1023 px  (icon rail) ─────────────────── */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .main        { grid-template-columns: 60px 1fr; }
   .canvas      { padding: 16px 20px; }
 
   .sidenav     { width: 60px; overflow: visible; }
@@ -892,7 +907,7 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
   .nav-user    { padding: 10px 0; justify-content: center; }
   .nav-user-info { display: none; }
 
-  .kpi-grid    { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid    { grid-template-columns: repeat(3, 1fr); }
   .dash-priority-row, .dash-ops-row { grid-template-columns: 1fr; }
 }
 
@@ -901,14 +916,20 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
   .dash-grid { grid-template-columns: 1fr; }
 }
 
+/* ── Nav backdrop — fixed so it never participates in flex layout ────────── */
+/* Always in DOM; visibility controlled by .nav-backdrop-open on mobile only */
+.nav-backdrop {
+  position: fixed;
+  inset: 48px 0 0 0;
+  z-index: 29;
+  pointer-events: none;
+  background: transparent;
+}
+
 /* ── Mobile  < 768 px  (drawer nav) ─────────────────────── */
 @media (max-width: 767px) {
   /* Shell */
-  .main   { grid-template-columns: 1fr; }
   .canvas { padding: 12px 14px; }
-
-  /* Hamburger */
-  .menu-btn { display: flex !important; }
 
   /* Hide search bar (icon-only search not implemented — Ctrl+K works) */
   .header-search { display: none !important; }
@@ -924,26 +945,29 @@ a:hover { color: var(--m365-brand-hover); text-decoration: underline; }
     width: 240px;
     z-index: 30;
     transform: translateX(-100%);
+    /* override the desktop width transition — use transform instead */
     transition: transform 0.22s cubic-bezier(0.33, 0, 0.67, 1);
     border-right: 1px solid var(--neutral-stroke-2);
+    /* restore width to 240px even when .nav-closed is set */
+    overflow-y: auto;
   }
   .sidenav.nav-open {
     transform: translateX(0);
     box-shadow: var(--shadow-16);
   }
-
-  /* Drawer backdrop */
-  .nav-backdrop {
-    position: fixed;
-    inset: 48px 0 0 0;
+  /* Backdrop: show dark overlay on mobile when open */
+  .nav-backdrop.nav-backdrop-open {
     background: rgba(0, 0, 0, 0.4);
-    z-index: 29;
     animation: pageFade 0.18s ease-out;
+    pointer-events: auto;
   }
 
-  /* KPI tiles — 2 per row */
+  /* KPI tiles — 2 per row, last tile spans full width */
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .kpi-num  { font-size: 22px; line-height: 28px; }
+  .kpi-grid > :last-child { grid-column: 1 / -1; }
+  .kpi      { padding: 12px 14px; }
+  .kpi-num  { font-size: 22px; line-height: 28px; margin-top: 4px; }
+  .kpi-sub  { font-size: 11px; }
 
   /* Page header wraps so actions don't overflow */
   .page-head { flex-wrap: wrap; gap: 10px; }

@@ -51,7 +51,6 @@ export function SideNav({ alertCount = 0, open = false, onClose }: SideNavProps)
                   key={item.id}
                   href={item.href}
                   className={'nav-item' + (active ? ' active' : '')}
-                  onClick={onClose}
                   title={item.label}
                 >
                   <Icon size={14} />

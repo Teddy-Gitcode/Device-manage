@@ -8,12 +8,20 @@ import { WebSocketProvider } from '@/components/providers/WebSocketProvider'
 const AUTH_PATHS = ['/login', '/register']
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname            = usePathname()
-  const isAuth              = AUTH_PATHS.some(p => pathname.startsWith(p))
-  const [navOpen, setNavOpen] = useState(false)
+  const pathname = usePathname()
+  const isAuth   = AUTH_PATHS.some(p => pathname.startsWith(p))
 
-  // Close drawer on navigation
-  useEffect(() => { setNavOpen(false) }, [pathname])
+  // Open by default on desktop, closed on mobile
+  const [navOpen, setNavOpen] = useState(true)
+
+  useEffect(() => {
+    if (window.innerWidth < 768) setNavOpen(false)
+  }, [])
+
+  // On mobile: close drawer after navigation; on desktop: leave as-is
+  useEffect(() => {
+    if (window.innerWidth < 768) setNavOpen(false)
+  }, [pathname])
 
   if (isAuth) return <>{children}</>
 
@@ -21,10 +29,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <WebSocketProvider>
       <div className="app">
         <SuiteHeader onMenuClick={() => setNavOpen(v => !v)} />
-        <div className="main">
-          {navOpen && (
-            <div className="nav-backdrop" onClick={() => setNavOpen(false)} />
-          )}
+        <div className={`main${navOpen ? '' : ' nav-closed'}`}>
+          {/* Always in DOM as position:fixed — no conditional rendering avoids hydration mismatch */}
+          <div
+            className={`nav-backdrop${navOpen ? ' nav-backdrop-open' : ''}`}
+            onClick={() => setNavOpen(false)}
+          />
           <SideNav open={navOpen} onClose={() => setNavOpen(false)} />
           <main className="canvas">
             {children}
