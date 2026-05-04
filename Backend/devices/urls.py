@@ -9,6 +9,7 @@ from .views import (
     PrinterLogViewSet,
     PrinterDailyStatViewSet,
     ConsumableViewSet,
+    PrintJobViewSet,
     dashboard_view,
     printer_detail_view,
     printer_list_partial,
@@ -16,10 +17,11 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r"printers", PrinterViewSet, basename="printer")
-router.register(r"logs", PrinterLogViewSet, basename="printerlog")
+router.register(r"printers",    PrinterViewSet,        basename="printer")
+router.register(r"logs",        PrinterLogViewSet,     basename="printerlog")
 router.register(r"daily-stats", PrinterDailyStatViewSet, basename="printerdailystat")
-router.register(r"consumables", ConsumableViewSet, basename="consumable")
+router.register(r"consumables", ConsumableViewSet,     basename="consumable")
+router.register(r"print-jobs",  PrintJobViewSet,       basename="printjob")
 
 urlpatterns = [
     path("", include(router.urls)),

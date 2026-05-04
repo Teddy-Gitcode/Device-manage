@@ -2,12 +2,14 @@ import Link         from 'next/link'
 import { notFound } from 'next/navigation'
 import {
   IconChevronRight, IconPrinter,
-  IconDroplet, IconCpu, IconActivity, IconWrench,
-  IconAlertCircle, IconAlert, IconInfo, IconCheckCircle,
+  IconDroplet, IconCpu, IconActivity,
+  IconAlertCircle,
 } from '@/components/ui/Icons'
 import { AnimatedNumber }       from '@/components/ui/AnimatedNumber'
 import { AutoRefresh }          from '@/components/ui/AutoRefresh'
 import { DeviceDetailActions }  from '@/components/devices/DeviceDetailActions'
+import { DeviceEventLog }       from '@/components/devices/DeviceEventLog'
+import type { BackendLog }      from '@/components/devices/DeviceEventLog'
 import { api }                  from '@/lib/api'
 import { normalizeDevice }      from '@/lib/normalize'
 import type { DeviceStatus, TonerAlert } from '@/lib/types'
@@ -22,17 +24,6 @@ interface PageStats {
   daily:      { date: string; pages: number }[]
 }
 
-interface BackendLog {
-  id:              number
-  printer:         number
-  timestamp:       string
-  status:          string
-  event_type:      string
-  total_pages:     number
-  console_display: string | null
-  active_alerts:   string[] | null
-  error_code:      string | null
-}
 
 // ── Small server-safe helpers ───────────────────────────────────────────────
 
@@ -96,31 +87,6 @@ function SpecRow({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="v">{value}</span>
     </div>
   )
-}
-
-function eventTypeToLevel(t: string): string {
-  if (['PAPER_JAM', 'OFFLINE'].includes(t)) return 'danger'
-  if (['LOW_TONER'].includes(t))            return 'warn'
-  if (['MAINTENANCE'].includes(t))          return 'info'
-  return 'ok'
-}
-
-function eventTypeLabel(t: string): string {
-  const map: Record<string, string> = {
-    STATUS_CHECK: 'Status check',
-    PAPER_JAM:   'Paper jam',
-    LOW_TONER:   'Low toner',
-    OFFLINE:     'Offline',
-    MAINTENANCE: 'Maintenance',
-  }
-  return map[t] ?? t
-}
-
-const LEVEL_ICON: Record<string, React.ElementType> = {
-  ok:     IconCheckCircle,
-  warn:   IconAlert,
-  danger: IconAlertCircle,
-  info:   IconInfo,
 }
 
 function buildChartPoints(daily: { date: string; pages: number }[], last = 7) {
@@ -463,112 +429,11 @@ export default async function DevicePage({ params }: { params: { id: string } })
             <VolRow label="Last month" value={pageStats?.last_month ?? 0} />
           </div>
 
-          {/* Recent events */}
-          <div className="card" style={{ padding: '16px 20px', flex: 1 }}>
-            <div className="card-head" style={{ marginBottom: 8 }}>
-              <div className="card-title">Recent events</div>
-              {logs.length > 0 && (
-                <span style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>{logs.length} logged</span>
-              )}
-            </div>
-            {logs.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--neutral-fg-3)' }}>No events logged for this device.</p>
-            ) : (
-              logs.slice(0, 8).map((log, i) => {
-                const level = eventTypeToLevel(log.event_type)
-                const LIcon = LEVEL_ICON[level] ?? IconInfo
-                const alerts = log.active_alerts ?? []
-                return (
-                  <div
-                    key={log.id}
-                    className="stagger"
-                    style={{
-                      '--i': i,
-                      display: 'flex', gap: 10, alignItems: 'flex-start',
-                      padding: '8px 0',
-                      borderBottom: i < 7 ? '1px solid var(--neutral-stroke-divider)' : 'none',
-                    } as React.CSSProperties}
-                  >
-                    <div className={'ei ' + level} style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', flexShrink: 0, fontSize: 0 }}>
-                      <LIcon size={13} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{eventTypeLabel(log.event_type)}</div>
-                      {alerts.length > 0 && (
-                        <div style={{ fontSize: 11, color: 'var(--status-danger-fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {alerts[0]}
-                        </div>
-                      )}
-                      {!alerts.length && log.console_display && (
-                        <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {log.console_display}
-                        </div>
-                      )}
-                      <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginTop: 2 }}>
-                        {new Date(log.timestamp).toLocaleString()} · {log.total_pages?.toLocaleString() ?? '—'} pp
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Full event log */}
-      {logs.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="card-head" style={{ padding: '14px 20px', marginBottom: 0 }}>
-            <div className="card-title">Full event log</div>
-            <span style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>{logs.length} entries</span>
-          </div>
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-            <table className="table" style={{ minWidth: 480 }}>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Event</th>
-                  <th>Status</th>
-                  <th>Level</th>
-                  <th style={{ textAlign: 'right' }}>Pages</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map(log => {
-                  const level  = eventTypeToLevel(log.event_type)
-                  const alerts = log.active_alerts ?? []
-                  return (
-                    <tr key={log.id} style={{ cursor: 'default' }}>
-                      <td style={{ color: 'var(--neutral-fg-3)', fontVariantNumeric: 'tabular-nums', fontSize: 11, whiteSpace: 'nowrap' }}>
-                        {new Date(log.timestamp).toLocaleString()}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 500 }}>{eventTypeLabel(log.event_type)}</div>
-                        {alerts.length > 0 && (
-                          <div style={{ fontSize: 11, color: 'var(--status-danger-fg)', marginTop: 2 }}>{alerts[0]}</div>
-                        )}
-                        {!alerts.length && log.console_display && (
-                          <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginTop: 2 }}>{log.console_display}</div>
-                        )}
-                      </td>
-                      <td style={{ color: 'var(--neutral-fg-2)' }}>{log.status || '—'}</td>
-                      <td>
-                        <span className={'badge ' + level}>
-                          <span className="dot" />{level}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {log.total_pages?.toLocaleString() ?? '—'}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* Event log */}
+      <DeviceEventLog logs={logs} />
     </div>
   )
 }

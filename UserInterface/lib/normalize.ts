@@ -227,3 +227,32 @@ export function normalizeConsumables(raw: BackendConsumable[]): StockItem[] {
     category:  c.category,
   }))
 }
+
+export function normalizeRealloc(devices: import('./types').Device[]): import('./types').ReallocSuggestion[] {
+  const underused = devices
+    .filter(d => d.utilization < 20 && d.status !== 'danger')
+    .sort((a, b) => a.utilization - b.utilization)
+
+  const overloaded = devices
+    .filter(d => d.utilization > 80)
+    .sort((a, b) => b.utilization - a.utilization)
+
+  if (underused.length === 0 || overloaded.length === 0) return []
+
+  return underused.slice(0, 5).map((from, i) => {
+    const to = overloaded[i % overloaded.length]
+    return {
+      from: {
+        name:      from.name,
+        location:  from.location || 'Unknown',
+        utilLabel: `${from.utilization}% util`,
+      },
+      to: {
+        name:      to.name,
+        location:  to.location || 'Unknown',
+        utilLabel: `${to.utilization}% util`,
+      },
+      reason: `${from.name} averaged ${from.utilization}% utilisation over 30 days while ${to.name} is operating at ${to.utilization}% — above its rated duty cycle.`,
+    }
+  })
+}

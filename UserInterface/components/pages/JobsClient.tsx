@@ -1,86 +1,149 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api }                  from '@/lib/api'
-import { formatRelativeTime }   from '@/lib/utils'
 import type { PrintJob }        from '@/lib/types'
 
-const STATE_BADGE: Record<string, string> = { printing: 'ok', queued: 'info', held: 'warn' }
-const STATE_LABEL: Record<string, string> = { printing: 'Printing', queued: 'Queued', held: 'Held' }
+type Period = '24h' | '7d' | '30d'
+
+const PERIOD_LABELS: Record<Period, string> = {
+  '24h': 'Last 24 h',
+  '7d':  'Last 7 days',
+  '30d': 'Last 30 days',
+}
+
+function withinPeriod(iso: string, period: Period): boolean {
+  const ms = { '24h': 86_400_000, '7d': 604_800_000, '30d': 2_592_000_000 }[period]
+  return Date.now() - new Date(iso).getTime() <= ms
+}
 
 export function JobsClient({ initialJobs }: { initialJobs: PrintJob[] }) {
   const [jobs,   setJobs]   = useState(initialJobs)
-  const [filter, setFilter] = useState<'all' | 'printing' | 'queued' | 'held'>('all')
+  const [period, setPeriod] = useState<Period>('7d')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const id = setInterval(async () => {
       try { setJobs(await api.jobs()) } catch { /* keep existing */ }
-    }, 15_000)
+    }, 30_000)
     return () => clearInterval(id)
   }, [])
 
-  const visible = filter === 'all' ? jobs : jobs.filter(j => j.state === filter)
-  const counts = {
-    all:      jobs.length,
-    printing: jobs.filter(j => j.state === 'printing').length,
-    queued:   jobs.filter(j => j.state === 'queued').length,
-    held:     jobs.filter(j => j.state === 'held').length,
-  }
+  const filtered = jobs.filter(j => {
+    if (!withinPeriod(j.printedAt, period)) return false
+    if (search) {
+      const q = search.toLowerCase()
+      return (
+        j.username.toLowerCase().includes(q) ||
+        j.computer.toLowerCase().includes(q) ||
+        j.printerDisplay.toLowerCase().includes(q) ||
+        j.documentName.toLowerCase().includes(q)
+      )
+    }
+    return true
+  })
+
+  const totalPages = filtered.reduce((s, j) => s + j.pages, 0)
+  const totalJobs  = filtered.length
+  const uniqueUsers = new Set(filtered.map(j => j.username)).size
 
   return (
     <>
-      {/* KPI summary */}
+      {/* KPI strip */}
       <div className="kpi-grid" style={{ marginBottom: 20 }}>
-        {(['printing', 'queued', 'held'] as const).map(s => (
-          <div className="card kpi" key={s}>
-            <div className="kpi-label">{STATE_LABEL[s]}</div>
-            <div className="kpi-num" style={{ color: s === 'held' ? 'var(--status-warning-fg)' : 'inherit' }}>{counts[s]}</div>
-          </div>
-        ))}
         <div className="card kpi">
-          <div className="kpi-label">Total pages queued</div>
-          <div className="kpi-num">{jobs.filter(j => j.state !== 'held').reduce((s, j) => s + j.pages, 0).toLocaleString()}</div>
+          <div className="kpi-label">Jobs</div>
+          <div className="kpi-num">{totalJobs.toLocaleString()}</div>
+        </div>
+        <div className="card kpi">
+          <div className="kpi-label">Pages printed</div>
+          <div className="kpi-num">{totalPages.toLocaleString()}</div>
+        </div>
+        <div className="card kpi">
+          <div className="kpi-label">Unique users</div>
+          <div className="kpi-num">{uniqueUsers}</div>
+        </div>
+        <div className="card kpi">
+          <div className="kpi-label">Est. cost (KES)</div>
+          <div className="kpi-num">{(totalPages * 0.30).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-        {(['all', 'printing', 'queued', 'held'] as const).map(f => (
-          <button key={f} className={'btn' + (filter === f ? ' primary' : ' secondary') + ' small'} onClick={() => setFilter(f)}>
-            {f === 'all' ? `All (${counts.all})` : `${STATE_LABEL[f]} (${counts[f]})`}
-          </button>
-        ))}
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['24h', '7d', '30d'] as Period[]).map(p => (
+            <button
+              key={p}
+              className={'btn small' + (period === p ? ' primary' : ' secondary')}
+              onClick={() => setPeriod(p)}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+        <input
+          type="search"
+          placeholder="Search user, computer, printer, document…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            flex: 1, minWidth: 200, maxWidth: 360,
+            padding: '5px 10px', fontSize: 12,
+            border: '1px solid var(--neutral-stroke-2)',
+            borderRadius: 4, background: 'var(--neutral-bg-1)',
+            color: 'var(--neutral-fg-1)', outline: 'none',
+          }}
+        />
+        <span style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginLeft: 'auto' }}>
+          {filtered.length} {filtered.length === 1 ? 'job' : 'jobs'}
+        </span>
       </div>
 
-      {/* Jobs table */}
+      {/* Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Job</th>
-              <th>User</th>
-              <th>Department</th>
-              <th>Device</th>
-              <th style={{ textAlign: 'right' }}>Pages</th>
-              <th>Submitted</th>
-              <th>State</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map(j => (
-              <tr key={j.id} style={{ cursor: 'default' }}>
-                <td><div style={{ fontWeight: 500 }}>{j.title}</div><div style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>{j.id}</div></td>
-                <td>{j.userName}</td>
-                <td style={{ color: 'var(--neutral-fg-3)' }}>{j.dept}</td>
-                <td style={{ fontVariantNumeric: 'tabular-nums' }}>{j.deviceId}</td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{j.pages.toLocaleString()}</td>
-                <td style={{ color: 'var(--neutral-fg-3)', fontSize: 11 }}>{formatRelativeTime(j.submittedAt)}</td>
-                <td>
-                  <span className={'badge ' + STATE_BADGE[j.state]}><span className="dot" />{STATE_LABEL[j.state]}</span>
-                </td>
+        {filtered.length === 0 ? (
+          <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--neutral-fg-3)', fontSize: 13 }}>
+            {jobs.length === 0
+              ? 'No print jobs received yet — deploy the agent to domain PCs to start collecting data.'
+              : 'No jobs match the current filter.'}
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Computer</th>
+                <th>Printer</th>
+                <th>Document</th>
+                <th style={{ textAlign: 'right' }}>Pages</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map(j => {
+                const ts = new Date(j.printedAt)
+                return (
+                  <tr key={j.id} style={{ cursor: 'default' }}>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: 11, color: 'var(--neutral-fg-3)' }}>
+                      {ts.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                      {' '}
+                      {ts.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{j.username.split('\\').pop()}</td>
+                    <td style={{ color: 'var(--neutral-fg-3)', fontSize: 12 }}>{j.computer || '—'}</td>
+                    <td style={{ fontSize: 12 }}>{j.printerDisplay}</td>
+                    <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
+                      {j.documentName || '—'}
+                    </td>
+                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                      {j.pages.toLocaleString()}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   )

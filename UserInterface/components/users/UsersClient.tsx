@@ -65,7 +65,7 @@ function AddUserModal({ onClose, onAdded }: { onClose: () => void; onAdded: (u: 
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box">
+      <div className="modal-box" style={{ maxWidth: 480, width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Add system user</h2>
           <button className="btn subtle small" onClick={onClose}><IconX size={15} /></button>
@@ -85,9 +85,9 @@ function AddUserModal({ onClose, onAdded }: { onClose: () => void; onAdded: (u: 
             <select
               value={form.role}
               onChange={e => set('role', e.target.value)}
-              style={{ height: 32, padding: '0 8px', border: '1px solid var(--neutral-stroke-1)', borderRadius: 'var(--radius-control)', fontSize: 13, background: 'var(--neutral-bg-1)', outline: 'none' }}
+              style={{ height: 32, padding: '0 8px', border: '1px solid var(--neutral-stroke-1)', borderRadius: 'var(--radius-control)', fontSize: 13, background: 'var(--neutral-bg-1)', color: 'var(--neutral-fg-1)', outline: 'none' }}
             >
-              {ROLES.map(r => <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r[0].toUpperCase() + r.slice(1)}</option>)}
+              {ROLES.map(r => <option key={r} value={r}>{r[0].toUpperCase() + r.slice(1)}</option>)}
             </select>
           </div>
 
@@ -122,7 +122,7 @@ function ModalField({ label, value, onChange, placeholder, type = 'text', requir
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        style={{ height: 32, padding: '0 8px', border: '1px solid var(--neutral-stroke-1)', borderRadius: 'var(--radius-control)', fontSize: 13, background: 'var(--neutral-bg-1)', outline: 'none', width: '100%' }}
+        style={{ height: 32, padding: '0 8px', border: '1px solid var(--neutral-stroke-1)', borderRadius: 'var(--radius-control)', fontSize: 13, background: 'var(--neutral-bg-1)', color: 'var(--neutral-fg-1)', outline: 'none', width: '100%' }}
       />
     </div>
   )
@@ -162,7 +162,7 @@ function EditRoleModal({ user, onClose, onSaved }: {
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box">
+      <div className="modal-box" style={{ maxWidth: 400, width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Edit — {user.username}</h2>
           <button className="btn subtle small" onClick={onClose}><IconX size={15} /></button>
@@ -174,7 +174,7 @@ function EditRoleModal({ user, onClose, onSaved }: {
             <select
               value={role}
               onChange={e => setRole(e.target.value)}
-              style={{ height: 32, padding: '0 8px', border: '1px solid var(--neutral-stroke-1)', borderRadius: 'var(--radius-control)', fontSize: 13, background: 'var(--neutral-bg-1)', outline: 'none' }}
+              style={{ height: 32, padding: '0 8px', border: '1px solid var(--neutral-stroke-1)', borderRadius: 'var(--radius-control)', fontSize: 13, background: 'var(--neutral-bg-1)', color: 'var(--neutral-fg-1)', outline: 'none' }}
             >
               {ROLES.map(r => <option key={r} value={r}>{r[0].toUpperCase() + r.slice(1)}</option>)}
             </select>
@@ -208,13 +208,14 @@ function EditRoleModal({ user, onClose, onSaved }: {
   )
 }
 
-// ── Main table component ──────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function UsersClient({ initialUsers }: { initialUsers: SystemUser[] }) {
-  const { token, user: me } = useAuth()
-  const [users,   setUsers]   = useState<SystemUser[]>(initialUsers)
-  const [showAdd, setShowAdd] = useState(false)
-  const [editing, setEditing] = useState<SystemUser | null>(null)
+  const { user: me } = useAuth()
+  const { token }    = useAuth()
+  const [users,    setUsers]    = useState<SystemUser[]>(initialUsers)
+  const [showAdd,  setShowAdd]  = useState(false)
+  const [editing,  setEditing]  = useState<SystemUser | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
 
   async function handleDelete(u: SystemUser) {
@@ -232,20 +233,28 @@ export function UsersClient({ initialUsers }: { initialUsers: SystemUser[] }) {
   }
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button className="btn primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowAdd(true)}>
-          <IconPlus size={14} /> Add user
-        </button>
-      </div>
-
+    <div>
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="card-head" style={{ padding: '14px 16px', marginBottom: 0 }}>
-          <div className="card-title">System accounts</div>
-          <span style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>{users.length} account{users.length !== 1 ? 's' : ''}</span>
+        <div className="card-head" style={{ padding: '14px 16px' }}>
+          <div>
+            <div className="card-title">System accounts</div>
+            <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)', marginTop: 2 }}>
+              {users.filter(u => u.role === 'admin').length} admin ·{' '}
+              {users.filter(u => u.role === 'operator').length} operator ·{' '}
+              {users.filter(u => u.role === 'viewer').length} viewer
+            </div>
+          </div>
+          <button
+            className="btn primary small"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            onClick={() => setShowAdd(true)}
+          >
+            <IconPlus size={13} /> Add user
+          </button>
         </div>
+
         <div style={{ overflowX: 'auto' }}>
-          <table className="table" style={{ minWidth: 560 }}>
+          <table className="table" style={{ minWidth: 520 }}>
             <thead>
               <tr>
                 <th>User</th>
@@ -253,19 +262,32 @@ export function UsersClient({ initialUsers }: { initialUsers: SystemUser[] }) {
                 <th>Role</th>
                 <th>Status</th>
                 <th>Last active</th>
-                <th></th>
+                <th style={{ width: 100 }}></th>
               </tr>
             </thead>
             <tbody>
               {users.map(u => (
                 <tr key={u.id} style={{ cursor: 'default' }}>
                   <td>
-                    <div style={{ fontWeight: 500 }}>{u.username}</div>
-                    {(u.first_name || u.last_name) && (
-                      <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>
-                        {[u.first_name, u.last_name].filter(Boolean).join(' ')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        className="avatar"
+                        style={{
+                          background: u.role === 'admin' ? 'var(--status-danger-fg)' : u.role === 'operator' ? 'var(--m365-brand)' : 'var(--neutral-fg-3)',
+                          width: 28, height: 28, flexShrink: 0, fontSize: 11,
+                        }}
+                      >
+                        {(u.first_name?.[0] ?? u.username[0]).toUpperCase()}
                       </div>
-                    )}
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{u.username}</div>
+                        {(u.first_name || u.last_name) && (
+                          <div style={{ fontSize: 11, color: 'var(--neutral-fg-3)' }}>
+                            {[u.first_name, u.last_name].filter(Boolean).join(' ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td style={{ color: 'var(--neutral-fg-3)', fontSize: 12 }}>{u.email || '—'}</td>
                   <td>
@@ -313,6 +335,6 @@ export function UsersClient({ initialUsers }: { initialUsers: SystemUser[] }) {
           onSaved={updated => setUsers(prev => prev.map(u => u.id === updated.id ? updated : u))}
         />
       )}
-    </>
+    </div>
   )
 }

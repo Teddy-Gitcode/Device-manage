@@ -3,7 +3,7 @@ Django REST Framework API views for the devices app.
 Implements Google SRE Four Golden Signals API.
 """
 from django.contrib.auth import authenticate
-from django.db.models import Avg, Prefetch, Sum, Q
+from django.db.models import Avg, Count, OuterRef, Prefetch, Subquery, Sum, Q
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
@@ -14,12 +14,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from django.contrib.auth.models import User
-from .models import Printer, PrinterLog, PrinterDailyStat, Consumable, SupplyLevel, UserProfile
+from .models import Printer, PrinterLog, PrinterDailyStat, Consumable, SupplyLevel, UserProfile, PrintJob
 from .serializers import (
     PrinterSerializer,
     PrinterLogSerializer,
     PrinterDailyStatSerializer,
     ConsumableSerializer,
+    PrintJobSerializer,
 )
 from .tasks import discover_printers, poll_all_active_printers
 from .permissions import IsViewer, IsOperator, IsAdminRole, user_role
@@ -799,3 +800,70 @@ def user_detail_view(request, user_id):
         'role': user_role(target),
         'is_active': target.is_active,
     })
+
+
+class PrintJobViewSet(viewsets.ModelViewSet):
+    """
+    Print job tracking.
+    POST /api/devices/print-jobs/          → Windows agent submits new job
+    GET  /api/devices/print-jobs/          → paginated job list (frontend)
+    GET  /api/devices/print-jobs/user-stats/ → per-user aggregates for last 30 days
+    """
+    queryset           = PrintJob.objects.select_related('printer').order_by('-printed_at')
+    serializer_class   = PrintJobSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends    = [filters.OrderingFilter]
+    ordering_fields    = ['printed_at', 'pages', 'username']
+
+    def get_permissions(self):
+        if self.request.method in ('POST',):
+            return [IsAuthenticated()]
+        return [IsViewer()]
+
+    @action(detail=False, methods=['get'], url_path='user-stats')
+    def user_stats(self, request):
+        """Per-user page totals, job count, estimated cost and most-used printer — last 30 days."""
+        cutoff = timezone.now() - timedelta(days=30)
+
+        top_printer_sq = (
+            PrintJob.objects
+            .filter(printed_at__gte=cutoff, username=OuterRef('username'))
+            .values('printer_name')
+            .annotate(c=Count('id'))
+            .order_by('-c')
+            .values('printer_name')[:1]
+        )
+
+        qs = (
+            PrintJob.objects
+            .filter(printed_at__gte=cutoff)
+            .values('username')
+            .annotate(
+                pages=Sum('pages'),
+                job_count=Count('id'),
+                top_printer=Subquery(top_printer_sq),
+            )
+            .order_by('-pages')[:20]
+        )
+
+        COST_PER_PAGE = 0.30  # KES
+        PALETTE = ['#0f6cbd', '#107c10', '#835c00', '#a4262c', '#5c2d91', '#038387']
+        results = []
+        for row in qs:
+            raw  = row['username']
+            name = raw.split('\\')[-1] if '\\' in raw else raw
+            parts    = name.replace('.', ' ').split()
+            initials = ''.join(p[0].upper() for p in parts[:2]) or name[:2].upper()
+            color    = PALETTE[abs(hash(raw)) % len(PALETTE)]
+            results.append({
+                'username':     raw,
+                'display_name': name,
+                'initials':     initials,
+                'color':        color,
+                'pages':        row['pages'] or 0,
+                'job_count':    row['job_count'],
+                'cost':         round((row['pages'] or 0) * COST_PER_PAGE),
+                'top_printer':  row['top_printer'] or '',
+                'last_seen':    None,
+            })
+        return Response(results)

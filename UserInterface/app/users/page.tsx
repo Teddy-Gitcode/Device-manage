@@ -12,6 +12,7 @@ export default async function UsersPage() {
   ])
 
   const accessDenied = status === 403 || status === 401
+  const accounts     = users ?? []
 
   return (
     <>
@@ -23,15 +24,42 @@ export default async function UsersPage() {
       </div>
 
       {accessDenied ? (
-        <div className="card" style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--neutral-fg-3)' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6, color: 'var(--neutral-fg-1)' }}>Access restricted</div>
-          <p style={{ fontSize: 13 }}>Only fleet administrators can view system accounts.</p>
+        <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Access restricted</div>
+          <p style={{ fontSize: 13, color: 'var(--neutral-fg-3)' }}>Only fleet administrators can view system accounts.</p>
         </div>
       ) : (
-        <div className="dash-grid">
-          <UsersClient initialUsers={users ?? []} />
-          <TopUsers users={topUsers} />
-        </div>
+        <>
+          {/* ── KPI strip ───────────────────────────────────── */}
+          <div className="kpi-grid" style={{ marginBottom: 20 }}>
+            <div className="card kpi">
+              <div className="kpi-label">Total accounts</div>
+              <div className="kpi-num">{accounts.length}</div>
+            </div>
+            <div className="card kpi">
+              <div className="kpi-label">Admins</div>
+              <div className="kpi-num">{accounts.filter(u => u.role === 'admin').length}</div>
+            </div>
+            <div className="card kpi">
+              <div className="kpi-label">Operators</div>
+              <div className="kpi-num">{accounts.filter(u => u.role === 'operator').length}</div>
+            </div>
+            <div className="card kpi">
+              <div className="kpi-label">Viewers</div>
+              <div className="kpi-num">{accounts.filter(u => u.role === 'viewer').length}</div>
+            </div>
+            <div className="card kpi">
+              <div className="kpi-label">Print users · 30d</div>
+              <div className="kpi-num">{topUsers.length}</div>
+            </div>
+          </div>
+
+          {/* ── System accounts table + print leaderboard ───── */}
+          <div className="dash-grid">
+            <UsersClient initialUsers={accounts} />
+            <TopUsers users={topUsers} />
+          </div>
+        </>
       )}
     </>
   )

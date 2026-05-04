@@ -1,7 +1,6 @@
 export type DeviceStatus    = 'ok' | 'warn' | 'danger' | 'neutral'
 export type TonerAlert      = 'none' | 'low' | 'empty'
 export type Recommendation  = 'keep' | 'relocate' | 'service'
-export type JobState        = 'printing' | 'held' | 'queued'
 export type TicketPriority  = 'high' | 'medium' | 'low'
 export type TicketStatus    = 'open' | 'inprogress' | 'scheduled'
 export type EventLevel      = 'critical' | 'warning' | 'info' | 'ok'
@@ -67,24 +66,29 @@ export interface ReallocSuggestion {
 }
 
 export interface PrintJob {
-  id:          string
-  title:       string
-  userName:    string
-  dept:        string
-  deviceId:    string
-  pages:       number
-  state:       JobState
-  submittedAt: string
+  id:           number
+  printer:      number | null
+  printerIp:    string
+  printerName:  string
+  printerDisplay: string
+  username:     string
+  computer:     string
+  documentName: string
+  pages:        number
+  printedAt:    string
+  receivedAt:   string
 }
 
 export interface TopUser {
-  name:     string
-  dept:     string
-  initials: string
-  color:    string
-  pages:    number
-  cost:     number
-  quota:    number
+  username:    string
+  displayName: string
+  initials:    string
+  color:       string
+  pages:       number
+  jobCount:    number
+  cost:        number
+  topPrinter:  string
+  lastSeen:    string | null
 }
 
 export interface DeptCost {

@@ -375,3 +375,27 @@ class Consumable(models.Model):
         verbose_name = "Consumable"
         verbose_name_plural = "Consumables"
         ordering = ["-updated_at"]
+
+
+class PrintJob(models.Model):
+    """Single print job captured from Windows Event ID 307 via the PowerShell agent."""
+    printer       = models.ForeignKey(
+        Printer, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='print_jobs',
+    )
+    printer_ip    = models.GenericIPAddressField(db_index=True)
+    printer_name  = models.CharField(max_length=255, blank=True)
+    username      = models.CharField(max_length=200, db_index=True)
+    computer      = models.CharField(max_length=200, blank=True)
+    document_name = models.CharField(max_length=500, blank=True)
+    pages         = models.PositiveIntegerField(default=0)
+    printed_at    = models.DateTimeField(db_index=True)
+    received_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-printed_at']
+        verbose_name = 'Print Job'
+        verbose_name_plural = 'Print Jobs'
+
+    def __str__(self):
+        return f"{self.username} → {self.printer_name} ({self.pages}pp)"

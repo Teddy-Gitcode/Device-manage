@@ -1,23 +1,11 @@
 import { IconChevronRight } from '@/components/ui/Icons'
 import { DashboardShell }    from '@/components/dashboard/DashboardShell'
 import { api }               from '@/lib/api'
-import { normalizeDevices, normalizeConsumables } from '@/lib/normalize'
+import { normalizeDevices } from '@/lib/normalize'
 
 export default async function DashboardPage() {
-  const [rawPrinters, rawConsumables, realloc, tickets, policies, topUsers, deptCosts, jobs] =
-    await Promise.all([
-      api.printers().catch(() => []),
-      api.consumables().catch(() => []),
-      api.realloc(),
-      api.tickets(),
-      api.policies(),
-      api.topUsers(),
-      api.deptCosts(),
-      api.jobs(),
-    ])
-
-  const devices = normalizeDevices(rawPrinters as Parameters<typeof normalizeDevices>[0])
-  const stock   = normalizeConsumables(rawConsumables as Parameters<typeof normalizeConsumables>[0])
+  const rawPrinters = await api.printers().catch(() => [])
+  const devices     = normalizeDevices(rawPrinters as Parameters<typeof normalizeDevices>[0])
 
   return (
     <>
@@ -36,16 +24,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <DashboardShell
-        devices={devices}
-        stock={stock}
-        realloc={realloc}
-        tickets={tickets}
-        policies={policies}
-        topUsers={topUsers}
-        deptCosts={deptCosts}
-        jobs={jobs}
-      />
+      <DashboardShell devices={devices} />
     </>
   )
 }

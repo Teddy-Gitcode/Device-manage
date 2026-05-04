@@ -3,7 +3,7 @@ Django REST Framework serializers for the devices app.
 """
 from rest_framework import serializers
 
-from .models import Printer, PrinterLog, PrinterDailyStat, SupplyLevel, Consumable
+from .models import Printer, PrinterLog, PrinterDailyStat, SupplyLevel, Consumable, PrintJob
 
 
 class SupplyLevelSerializer(serializers.ModelSerializer):
@@ -343,3 +343,35 @@ class PrinterSerializer(serializers.ModelSerializer):
             info["health_label"] = "Critical"
 
         return info
+
+
+class PrintJobSerializer(serializers.ModelSerializer):
+    """
+    POST (Windows agent): send printer_ip, username, computer, document_name, pages, printed_at.
+    GET  (frontend):      returns enriched printer_display field.
+    """
+    printer_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = PrintJob
+        fields = [
+            'id', 'printer', 'printer_ip', 'printer_name', 'printer_display',
+            'username', 'computer', 'document_name', 'pages',
+            'printed_at', 'received_at',
+        ]
+        read_only_fields = ['id', 'received_at', 'printer', 'printer_display']
+
+    def get_printer_display(self, obj) -> str:
+        if obj.printer_id:
+            return obj.printer.name
+        return obj.printer_name or obj.printer_ip
+
+    def create(self, validated_data):
+        ip = validated_data.get('printer_ip')
+        try:
+            validated_data['printer'] = Printer.objects.get(ip_address=ip)
+            if not validated_data.get('printer_name'):
+                validated_data['printer_name'] = validated_data['printer'].name
+        except Printer.DoesNotExist:
+            pass
+        return super().create(validated_data)
